@@ -182,10 +182,10 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
         direction: Math.random() > 0.5 ? 1 : -1 // Random direction
       };
 
-      // Reset after animation completes
+      // Reset after animation completes (faster)
       setTimeout(() => {
         setIsTurning(false);
-      }, 1500);
+      }, 800);
     }
 
     if (onClick) {
@@ -226,7 +226,7 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
     let tapRotation = 0;
     let tapJump = 0;
     if (isTurning && turnAnimationRef.current.progress < 1) {
-      turnAnimationRef.current.progress += delta * 1.5; // Animation speed
+      turnAnimationRef.current.progress += delta * 2.5; // Faster animation
       const progress = Math.min(turnAnimationRef.current.progress, 1);
 
       // Smooth easing function
@@ -234,10 +234,10 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
         ? 2 * progress * progress
         : 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
-      // Quick turn animation (full 180 degree turn)
-      tapRotation = Math.sin(eased * Math.PI) * Math.PI * turnAnimationRef.current.direction;
-      // Jump up during turn
-      tapJump = Math.sin(eased * Math.PI) * 0.5;
+      // Quick turn animation (smaller 90 degree turn)
+      tapRotation = Math.sin(eased * Math.PI) * (Math.PI / 2) * turnAnimationRef.current.direction;
+      // Small jump up during turn
+      tapJump = Math.sin(eased * Math.PI) * 0.2;
     }
 
     // Add swimming motion for fish

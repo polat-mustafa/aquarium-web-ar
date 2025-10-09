@@ -29,6 +29,7 @@ function ARExperienceContent() {
   const [showRecordingPopup, setShowRecordingPopup] = useState(true);
   const [showSocialSection, setShowSocialSection] = useState(false);
   const [showCreaturePopup, setShowCreaturePopup] = useState(false);
+  const [bubbles, setBubbles] = useState<Array<{ id: number; x: number; y: number }>>([]);
 
   const {
     activeCreature,
@@ -222,6 +223,27 @@ function ARExperienceContent() {
     setShowCreaturePopup(false);
   }, []);
 
+  // Handle screen tap for bubble effects
+  const handleScreenTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+
+    // Create multiple small bubbles
+    const newBubbles = Array.from({ length: 5 }, (_, i) => ({
+      id: Date.now() + i,
+      x: x + (Math.random() - 0.5) * 40,
+      y: y + (Math.random() - 0.5) * 40,
+    }));
+
+    setBubbles(prev => [...prev, ...newBubbles]);
+
+    // Remove bubbles after animation
+    setTimeout(() => {
+      setBubbles(prev => prev.filter(b => !newBubbles.find(nb => nb.id === b.id)));
+    }, 1000);
+  }, []);
+
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 relative">
       {/* Camera Video Background */}
@@ -236,8 +258,33 @@ function ARExperienceContent() {
 
       {/* AR Content Overlay - Render Three.js model viewer */}
       {isCameraReady && (
-        <div className="fixed inset-0 w-full h-full z-10" style={{ background: 'transparent', pointerEvents: 'auto' }}>
+        <div
+          className="fixed inset-0 w-full h-full z-10"
+          style={{ background: 'transparent', pointerEvents: 'auto' }}
+          onClick={handleScreenTap}
+          onTouchStart={handleScreenTap}
+        >
           <ARViewer className="w-full h-full" />
+
+          {/* Bubble effects */}
+          {bubbles.map(bubble => (
+            <div
+              key={bubble.id}
+              className="absolute pointer-events-none"
+              style={{
+                left: bubble.x,
+                top: bubble.y,
+                animation: 'bubbleFloat 1s ease-out forwards',
+              }}
+            >
+              <div className="w-4 h-4 bg-cyan-400/60 rounded-full border-2 border-cyan-300/80 shadow-lg"
+                style={{
+                  animation: 'bubblePop 1s ease-out forwards',
+                  boxShadow: '0 0 10px rgba(6, 182, 212, 0.6)',
+                }}
+              />
+            </div>
+          ))}
 
           {/* Animated Touch Indicator - Shows for 10 seconds */}
           {activeCreature && (
@@ -343,7 +390,7 @@ function ARExperienceContent() {
 
           {/* Content Container */}
           <div className="px-4 sm:px-6 space-y-6">
-          {activeCreature && showCreaturePopup ? (
+          {activeCreature && showCreaturePopup && false ? (
               <div
                 onClick={handleCreaturePopupTap}
                 className="group relative overflow-hidden bg-gradient-to-br from-slate-900/98 via-slate-800/95 to-slate-900/98 backdrop-blur-2xl border border-slate-700/60 text-white rounded-3xl shadow-2xl hover:shadow-cyan-500/10 transition-all duration-500 cursor-pointer">
