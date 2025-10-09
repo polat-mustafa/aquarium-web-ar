@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(lt:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx localtunnel:*)",
+      "Bash(ngrok config:*)",
+      "Bash(ngrok:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(curl:*)",
+      "Bash(awk:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(taskkill:*)",
+      "Bash(tasklist)",
+      "Bash(findstr:*)",
+      "Bash(ssh:*)",
+      "Bash(timeout:*)",
+      "Bash(grep:*)",
+      "Bash(node:*)",
+      "Bash(dir \"C:\\Users\\stary\\Desktop\\aquarium\\public\\models\")",
+      "Bash(dir \"C:\\Users\\stary\\Desktop\\aquarium\\public\\models\" /b)",
+      "Bash(dir:*)",
+      "Bash(git init:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

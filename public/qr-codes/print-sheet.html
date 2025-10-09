@@ -1,0 +1,126 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aquarium QR Codes - Print Sheet</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: white;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      border-bottom: 2px solid #1e3a8a;
+      padding-bottom: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+    .qr-item {
+      text-align: center;
+      border: 2px solid #e5e7eb;
+      border-radius: 15px;
+      padding: 20px;
+      break-inside: avoid;
+    }
+    .qr-item img {
+      width: 200px;
+      height: 200px;
+      margin-bottom: 15px;
+    }
+    .creature-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #1e3a8a;
+      margin-bottom: 5px;
+    }
+    .instructions {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 10px;
+    }
+    @media print {
+      body { margin: 0; }
+      .header { page-break-after: avoid; }
+      .qr-item { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🌊 Aquarium WebAR Experience</h1>
+    <h2>QR Codes for Sea Creature Exhibits</h2>
+    <p>Scan these codes with your smartphone to bring sea creatures to life in AR!</p>
+  </div>
+
+  <div class="grid">
+    
+      <div class="qr-item">
+        <img src="shark-1-qr.png" alt="QR Code for Great White Shark" />
+        <div class="creature-name">Great White Shark</div>
+        <div class="instructions">
+          Scan with camera to view in AR<br>
+          Visit: https://aquarium.loca.lt/ar
+        </div>
+      </div>
+    
+      <div class="qr-item">
+        <img src="dolphin-1-qr.png" alt="QR Code for Bottlenose Dolphin" />
+        <div class="creature-name">Bottlenose Dolphin</div>
+        <div class="instructions">
+          Scan with camera to view in AR<br>
+          Visit: https://aquarium.loca.lt/ar
+        </div>
+      </div>
+    
+      <div class="qr-item">
+        <img src="turtle-1-qr.png" alt="QR Code for Sea Turtle" />
+        <div class="creature-name">Sea Turtle</div>
+        <div class="instructions">
+          Scan with camera to view in AR<br>
+          Visit: https://aquarium.loca.lt/ar
+        </div>
+      </div>
+    
+      <div class="qr-item">
+        <img src="octopus-1-qr.png" alt="QR Code for Giant Pacific Octopus" />
+        <div class="creature-name">Giant Pacific Octopus</div>
+        <div class="instructions">
+          Scan with camera to view in AR<br>
+          Visit: https://aquarium.loca.lt/ar
+        </div>
+      </div>
+    
+      <div class="qr-item">
+        <img src="jellyfish-1-qr.png" alt="QR Code for Moon Jellyfish" />
+        <div class="creature-name">Moon Jellyfish</div>
+        <div class="instructions">
+          Scan with camera to view in AR<br>
+          Visit: https://aquarium.loca.lt/ar
+        </div>
+      </div>
+    
+      <div class="qr-item">
+        <img src="whale-1-qr.png" alt="QR Code for Humpback Whale" />
+        <div class="creature-name">Humpback Whale</div>
+        <div class="instructions">
+          Scan with camera to view in AR<br>
+          Visit: https://aquarium.loca.lt/ar
+        </div>
+      </div>
+    
+  </div>
+
+  <div style="text-align: center; margin-top: 40px; font-size: 12px; color: #6b7280;">
+    <p>🔗 Direct AR Experience: https://aquarium.loca.lt/ar</p>
+    <p>📱 Works on any smartphone browser - no app required!</p>
+  </div>
+</body>
+</html>
