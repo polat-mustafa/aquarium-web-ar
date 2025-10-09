@@ -236,8 +236,39 @@ function ARExperienceContent() {
 
       {/* AR Content Overlay - Render Three.js model viewer */}
       {isCameraReady && (
-        <div className="fixed inset-0 w-full h-full z-10 pointer-events-none" style={{ background: 'transparent' }}>
+        <div className="fixed inset-0 w-full h-full z-10" style={{ background: 'transparent', pointerEvents: 'auto' }}>
           <ARViewer className="w-full h-full" />
+
+          {/* Animated Touch Indicator - Shows for 10 seconds */}
+          {activeCreature && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none animate-pulse">
+              <div className="relative">
+                {/* Animated finger pointer */}
+                <div className="text-6xl animate-bounce" style={{
+                  animation: 'bounce 2s infinite, fadeOut 10s forwards',
+                  textShadow: '0 0 20px rgba(6, 182, 212, 0.8), 0 0 40px rgba(6, 182, 212, 0.4)'
+                }}>
+                  👆
+                </div>
+
+                {/* Tap indication with ripple effect */}
+                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+                  <div className="bg-cyan-500/90 backdrop-blur-sm text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg border border-cyan-300/50"
+                    style={{ animation: 'fadeOut 10s forwards' }}>
+                    👉 Tap the fish!
+                  </div>
+                </div>
+
+                {/* Ripple circles */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                  <div className="absolute w-20 h-20 border-4 border-cyan-400 rounded-full animate-ping opacity-75"
+                    style={{ animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite, fadeOut 10s forwards' }}></div>
+                  <div className="absolute w-16 h-16 border-4 border-blue-400 rounded-full animate-ping opacity-50"
+                    style={{ animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite 0.5s, fadeOut 10s forwards' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -407,17 +438,50 @@ function ARExperienceContent() {
                 </div>
               )}
               {!isCameraReady && !cameraError && (
-                <div className="bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/50 text-white p-8 rounded-2xl text-center space-y-6 shadow-2xl">
-                  <div className="text-6xl mb-2 animate-pulse">⏳</div>
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                    Initializing Camera
-                  </h2>
-                  <p className="text-sm text-slate-300">Please allow camera access when prompted</p>
-                  <div className="flex justify-center space-x-1">
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce animation-delay-100"></div>
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce animation-delay-200"></div>
+                <div className="bg-gradient-to-br from-slate-900/98 via-slate-800/95 to-slate-900/98 backdrop-blur-xl border border-cyan-500/30 text-white p-10 rounded-3xl text-center space-y-8 shadow-2xl max-w-md mx-auto">
+                  {/* Animated Camera Icon */}
+                  <div className="relative inline-block">
+                    <div className="absolute inset-0 bg-cyan-500/20 rounded-full blur-2xl animate-pulse"></div>
+                    <div className="relative text-7xl animate-bounce">
+                      📹
+                    </div>
                   </div>
+
+                  <div className="space-y-4">
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-300 via-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                      Camera Access Required
+                    </h2>
+                    <p className="text-slate-300 leading-relaxed">
+                      We need your camera to create an amazing AR experience
+                    </p>
+                  </div>
+
+                  {/* Steps */}
+                  <div className="space-y-3 text-left bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                      <p className="text-sm text-slate-300">Click <span className="text-cyan-400 font-semibold">"Allow"</span> when prompted</p>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                      <p className="text-sm text-slate-300">Point your camera at the creature</p>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                      <p className="text-sm text-slate-300">Watch your sea creature come to life!</p>
+                    </div>
+                  </div>
+
+                  {/* Loading Animation */}
+                  <div className="flex justify-center items-center space-x-2">
+                    <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce"></div>
+                    <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+
+                  <p className="text-xs text-slate-400">
+                    🔒 Your privacy is protected - we don't record or store any video
+                  </p>
                 </div>
               )}
             </>

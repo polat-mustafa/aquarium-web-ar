@@ -51,7 +51,7 @@ const ARViewer: React.FC<ARViewerProps> = memo(({ debug = false, className = '' 
   console.log('🎨 ARViewer render:', activeCreature?.name || 'no creature');
 
   return (
-    <div className={`relative w-full h-full ${className}`} style={{ background: 'transparent', pointerEvents: 'none' }}>
+    <div className={`relative w-full h-full ${className}`} style={{ background: 'transparent', pointerEvents: 'auto' }}>
       <Canvas
         camera={CAMERA_SETTINGS}
         gl={{
@@ -65,7 +65,7 @@ const ARViewer: React.FC<ARViewerProps> = memo(({ debug = false, className = '' 
         className="absolute inset-0"
         style={{
           background: 'transparent',
-          pointerEvents: 'none'
+          pointerEvents: 'auto'
         }}
         dpr={[1, 2]}
         frameloop="always"

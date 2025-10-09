@@ -24,7 +24,8 @@
       "Bash(dir \"C:\\Users\\stary\\Desktop\\aquarium\\public\\models\")",
       "Bash(dir \"C:\\Users\\stary\\Desktop\\aquarium\\public\\models\" /b)",
       "Bash(dir:*)",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useState, memo } from 'react';
+import React, { useRef, useEffect, useState, memo, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
@@ -66,6 +66,8 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scaleNormalizationRef = useRef(1);
+  const [isTurning, setIsTurning] = useState(false);
+  const turnAnimationRef = useRef({ progress: 0, direction: 1 });
 
   // Check if we have a model path
   const hasModelPath = !!creature.modelPath;
@@ -170,9 +172,32 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
     };
   }, [hasModelPath, creature.modelPath, creature.name]);
 
+  // Handle tap/click on creature
+  const handleTap = useCallback(() => {
+    if (!isTurning) {
+      console.log('🐟 Fish tapped! Starting turn animation');
+      setIsTurning(true);
+      turnAnimationRef.current = {
+        progress: 0,
+        direction: Math.random() > 0.5 ? 1 : -1 // Random direction
+      };
+
+      // Reset after animation completes
+      setTimeout(() => {
+        setIsTurning(false);
+      }, 1500);
+    }
+
+    if (onClick) {
+      onClick();
+    }
+  }, [isTurning, onClick]);
+
   // Update every frame
   useFrame((state, delta) => {
     if (!groupRef.current) return;
+
+    const time = state.clock.elapsedTime;
 
     // Force visibility on model
     if (model) {
@@ -191,14 +216,55 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
     groupRef.current.visible = true;
     groupRef.current.frustumCulled = false;
 
-    // Update mixer if we have one
+    // CRITICAL: Update mixer FIRST for embedded GLB animations
     if (mixerRef.current && model) {
       const validDelta = delta && !isNaN(delta) && delta > 0 ? delta : 0.016;
       mixerRef.current.update(validDelta);
     }
 
-    // Keep position and scale updated
-    groupRef.current.position.set(position[0], position[1], position[2]);
+    // Handle tap animation
+    let tapRotation = 0;
+    let tapJump = 0;
+    if (isTurning && turnAnimationRef.current.progress < 1) {
+      turnAnimationRef.current.progress += delta * 1.5; // Animation speed
+      const progress = Math.min(turnAnimationRef.current.progress, 1);
+
+      // Smooth easing function
+      const eased = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+      // Quick turn animation (full 180 degree turn)
+      tapRotation = Math.sin(eased * Math.PI) * Math.PI * turnAnimationRef.current.direction;
+      // Jump up during turn
+      tapJump = Math.sin(eased * Math.PI) * 0.5;
+    }
+
+    // Add swimming motion for fish
+    // Vertical floating motion (up and down)
+    const floatY = Math.sin(time * 0.8) * 0.3;
+
+    // Horizontal swaying motion (side to side)
+    const swayX = Math.sin(time * 0.6) * 0.25;
+
+    // Natural turning/rotation (left to right)
+    const naturalTurnRotation = Math.sin(time * 0.4) * 0.6;
+
+    // Additional tilt for realism
+    const tiltZ = Math.cos(time * 0.5) * 0.2;
+
+    // Apply animated position (add tap jump)
+    groupRef.current.position.set(
+      position[0] + swayX,
+      position[1] + floatY + tapJump,
+      position[2]
+    );
+
+    // Apply rotation (combine natural swimming with tap rotation)
+    groupRef.current.rotation.y = naturalTurnRotation + tapRotation;
+    groupRef.current.rotation.z = tiltZ;
+
+    // Keep scale updated
     groupRef.current.scale.setScalar(scale * scaleNormalizationRef.current);
   });
 
@@ -207,7 +273,7 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
       ref={groupRef}
       position={position}
       scale={scale * scaleNormalizationRef.current}
-      onClick={onClick}
+      onClick={handleTap}
       onPointerOver={(e) => {
         e.stopPropagation();
         document.body.style.cursor = 'pointer';
