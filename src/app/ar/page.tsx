@@ -354,17 +354,16 @@ function ARExperienceContent() {
         style={{ transform: 'scaleX(-1)' }}
       />
 
-      {/* AR Content Overlay - Render Three.js model viewer */}
-      {isCameraReady && (
-        <div
-          className="fixed inset-0 w-full h-full z-10"
-          style={{ background: 'transparent', pointerEvents: 'auto' }}
-          onClick={handleScreenTap}
-          onTouchStart={handleScreenTap}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          <ARViewer className="w-full h-full" />
+      {/* AR Content Overlay - Render Three.js model viewer - Always visible */}
+      <div
+        className="fixed inset-0 w-full h-full z-10"
+        style={{ background: 'transparent', pointerEvents: 'auto' }}
+        onClick={handleScreenTap}
+        onTouchStart={handleScreenTap}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <ARViewer className="w-full h-full" />
 
           {/* Bubble effects */}
           {bubbles.map(bubble => (
@@ -425,60 +424,57 @@ function ARExperienceContent() {
             </div>
           )}
 
-          {/* AR Controls - Bottom Right */}
-          {activeCreature && (
-            <div className="absolute bottom-32 right-4 z-40 flex flex-col space-y-3">
-              {/* Video Recording Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isRecording) {
-                    stopRecording();
-                  } else {
-                    startRecording();
-                  }
-                }}
-                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95 ${
-                  isRecording
-                    ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 animate-pulse'
-                    : 'bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500'
-                }`}
-                aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
-              >
-                {isRecording ? (
-                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="6" y="6" width="12" height="12" rx="2" />
-                  </svg>
-                ) : (
-                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="8" />
-                  </svg>
-                )}
-              </button>
+          {/* AR Controls - Bottom Right - Always visible */}
+          <div className="absolute bottom-32 right-4 z-40 flex flex-col space-y-3">
+            {/* Video Recording Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isRecording) {
+                  stopRecording();
+                } else {
+                  startRecording();
+                }
+              }}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95 ${
+                isRecording
+                  ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 animate-pulse'
+                  : 'bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500'
+              }`}
+              aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
+            >
+              {isRecording ? (
+                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              ) : (
+                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="8" />
+                </svg>
+              )}
+            </button>
 
-              {/* Fullscreen Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleFullscreen();
-                }}
-                className="w-14 h-14 bg-gradient-to-br from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95"
-                aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-              >
-                {isFullscreen ? (
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                ) : (
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+            {/* Fullscreen Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFullscreen();
+              }}
+              className="w-14 h-14 bg-gradient-to-br from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95"
+              aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            >
+              {isFullscreen ? (
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              )}
+            </button>
+          </div>
+      </div>
 
       {/* Mobile UI - Professional Overlay */}
       <div className="relative z-20 w-full min-h-screen flex flex-col"
