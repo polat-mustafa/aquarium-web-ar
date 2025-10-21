@@ -27,6 +27,8 @@ function ARExperienceContent() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showCreaturePopup, setShowCreaturePopup] = useState(false);
   const [bubbles, setBubbles] = useState<Array<{ id: number; x: number; y: number }>>([]);
+  const [showSharePanel, setShowSharePanel] = useState(false);
+  const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
 
   const {
     activeCreature,
