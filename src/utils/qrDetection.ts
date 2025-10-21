@@ -129,10 +129,29 @@ export const processQRCode = (qrData: string): QRDetectionResult => {
     };
   }
 
-  // Try URL parsing for gallery links (e.g., /ar?creature=shark-1)
+  // Try URL parsing for direct AR links (e.g., https://aquarium-web-ar.vercel.app/ar?creature=shark)
   try {
+    // Check if it's a full URL or relative URL
     if (qrData.includes('creature=') || qrData.includes('/ar')) {
-      const url = new URL(qrData, window.location.origin);
+      let url: URL;
+
+      // If it's a full URL (starts with http/https), use it directly
+      if (qrData.startsWith('http://') || qrData.startsWith('https://')) {
+        console.log('Detected full URL QR code:', qrData);
+        // Redirect to the URL directly
+        window.location.href = qrData;
+
+        // Still return a result for logging purposes
+        return {
+          detected: true,
+          data: qrData,
+          confidence: 1.0,
+        };
+      } else {
+        // Relative URL, parse it
+        url = new URL(qrData, window.location.origin);
+      }
+
       const creatureId = url.searchParams.get('creature');
 
       if (creatureId) {

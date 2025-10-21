@@ -27,7 +27,6 @@ function ARExperienceContent() {
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showRecordingPopup, setShowRecordingPopup] = useState(true);
-  const [showSocialSection, setShowSocialSection] = useState(false);
   const [showCreaturePopup, setShowCreaturePopup] = useState(false);
   const [bubbles, setBubbles] = useState<Array<{ id: number; x: number; y: number }>>([]);
 
@@ -219,10 +218,6 @@ function ARExperienceContent() {
     }
   }, [activeCreature, triggerSpecialAnimation]);
 
-  const handleCreaturePopupTap = useCallback(() => {
-    setShowCreaturePopup(false);
-  }, []);
-
   // Handle screen tap for bubble effects
   const handleScreenTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -286,31 +281,31 @@ function ARExperienceContent() {
             </div>
           ))}
 
-          {/* Animated Touch Indicator - Shows for 10 seconds */}
+          {/* Animated Touch Indicator - Shows for 10 seconds - Right side, smaller */}
           {activeCreature && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none animate-pulse">
+            <div className="absolute top-1/3 right-8 pointer-events-none animate-pulse">
               <div className="relative">
-                {/* Animated finger pointer */}
-                <div className="text-6xl animate-bounce" style={{
+                {/* Animated finger pointer - smaller */}
+                <div className="text-4xl animate-bounce" style={{
                   animation: 'bounce 2s infinite, fadeOut 10s forwards',
-                  textShadow: '0 0 20px rgba(6, 182, 212, 0.8), 0 0 40px rgba(6, 182, 212, 0.4)'
+                  textShadow: '0 0 15px rgba(6, 182, 212, 0.8), 0 0 30px rgba(6, 182, 212, 0.4)'
                 }}>
                   👆
                 </div>
 
                 {/* Tap indication with ripple effect */}
-                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-                  <div className="bg-cyan-500/90 backdrop-blur-sm text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg border border-cyan-300/50"
+                <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+                  <div className="bg-cyan-500/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-lg border border-cyan-300/50"
                     style={{ animation: 'fadeOut 10s forwards' }}>
-                    👉 Tap the fish!
+                    Tap & Drag
                   </div>
                 </div>
 
-                {/* Ripple circles */}
+                {/* Ripple circles - smaller */}
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="absolute w-20 h-20 border-4 border-cyan-400 rounded-full animate-ping opacity-75"
+                  <div className="absolute w-12 h-12 border-2 border-cyan-400 rounded-full animate-ping opacity-75"
                     style={{ animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite, fadeOut 10s forwards' }}></div>
-                  <div className="absolute w-16 h-16 border-4 border-blue-400 rounded-full animate-ping opacity-50"
+                  <div className="absolute w-10 h-10 border-2 border-blue-400 rounded-full animate-ping opacity-50"
                     style={{ animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite 0.5s, fadeOut 10s forwards' }}></div>
                 </div>
               </div>
@@ -356,21 +351,37 @@ function ARExperienceContent() {
                 </div>
 
                 {/* Navigation */}
-                <button
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      window.history.back();
-                    }
-                  }}
-                  className="group relative bg-gradient-to-r from-slate-800/90 to-slate-700/90 backdrop-blur-sm border border-slate-600/50 text-white px-4 py-2.5 rounded-xl font-medium transition-all duration-300 hover:from-slate-700/90 hover:to-slate-600/90 hover:border-slate-500/50 hover:shadow-xl hover:scale-105 active:scale-95"
-                >
-                  <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.location.href = 'https://aquarium-web-ar.vercel.app/gallery/';
+                      }
+                    }}
+                    className="group relative bg-gradient-to-r from-cyan-600/90 to-blue-600/90 backdrop-blur-sm border border-cyan-500/50 text-white px-4 py-2.5 rounded-xl font-medium transition-all duration-300 hover:from-cyan-500/90 hover:to-blue-500/90 hover:border-cyan-400/50 hover:shadow-xl hover:shadow-cyan-500/20 hover:scale-105 active:scale-95"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                      </svg>
+                      <span className="text-sm font-semibold">Gallery</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.history.back();
+                      }
+                    }}
+                    className="group relative bg-gradient-to-r from-slate-800/90 to-slate-700/90 backdrop-blur-sm border border-slate-600/50 text-white p-2.5 rounded-xl font-medium transition-all duration-300 hover:from-slate-700/90 hover:to-slate-600/90 hover:border-slate-500/50 hover:shadow-xl hover:scale-105 active:scale-95"
+                    aria-label="Go back"
+                  >
                     <svg className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
-                    <span className="text-sm">Back</span>
-                  </div>
-                </button>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -390,199 +401,126 @@ function ARExperienceContent() {
 
           {/* Content Container */}
           <div className="px-4 sm:px-6 space-y-6">
-          {activeCreature && showCreaturePopup && false ? (
-              <div
-                onClick={handleCreaturePopupTap}
-                className="group relative overflow-hidden bg-gradient-to-br from-slate-900/98 via-slate-800/95 to-slate-900/98 backdrop-blur-2xl border border-slate-700/60 text-white rounded-3xl shadow-2xl hover:shadow-cyan-500/10 transition-all duration-500 cursor-pointer">
-                {/* Animated Background Pattern */}
-                <div className="absolute inset-0 opacity-5">
-                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-transparent to-blue-500/20"></div>
-                  <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-cyan-400/30 to-transparent rounded-full blur-3xl animate-pulse"></div>
-                  <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-tl from-blue-400/30 to-transparent rounded-full blur-3xl animate-pulse animation-delay-1000"></div>
+            {cameraError && (
+              <div className="bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-red-500/30 text-white p-8 rounded-2xl text-center space-y-6 shadow-2xl max-w-md mx-auto">
+                <div className="relative inline-block">
+                  <div className="absolute inset-0 bg-red-500/20 rounded-full blur-2xl animate-pulse"></div>
+                  <div className="relative text-7xl">📷</div>
                 </div>
-
-                <div className="relative z-10 p-8 space-y-6">
-                  {/* Header Section */}
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="space-y-2">
-                        <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-cyan-200 via-cyan-300 to-blue-300 bg-clip-text text-transparent leading-tight">
-                          {activeCreature.name}
-                        </h2>
-                        <div className="h-1 w-24 bg-gradient-to-r from-cyan-400 via-blue-500 to-cyan-400 rounded-full shadow-lg"></div>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        <span className="relative bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 px-4 py-2 rounded-2xl text-sm font-bold uppercase tracking-wider shadow-lg">
-                          <span className="relative z-10">{activeCreature.type}</span>
-                          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur opacity-50"></div>
-                        </span>
-                        <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-                      </div>
-                    </div>
-
-                    {/* Quick Stats */}
-                    <div className="flex items-center space-x-4 text-sm text-slate-300">
-                      <div className="flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-                        <span className="font-medium">Active</span>
-                      </div>
-                      <div className="w-px h-4 bg-slate-600"></div>
-                      <div className="flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                        <span className="font-medium">AR Ready</span>
-                      </div>
-                      {activeCreature.modelPath && (
-                        <>
-                          <div className="w-px h-4 bg-slate-600"></div>
-                          <div className="flex items-center space-x-1">
-                            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                            <span className="font-medium">3D Model</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <div className="space-y-3">
-                    <p className="text-base text-slate-200 leading-relaxed font-medium">
-                      {activeCreature.description}
-                    </p>
-                  </div>
-
-                  {/* Interactive Section */}
-                  <div className="relative bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-cyan-500/15 border border-cyan-400/40 rounded-2xl p-5 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 backdrop-blur-sm"></div>
-                    <div className="relative z-10">
-                      <div className="flex items-center justify-center space-x-3 mb-2">
-                        <div className="w-3 h-3 bg-cyan-400 rounded-full animate-ping"></div>
-                        <h3 className="text-lg font-bold text-cyan-200">Interactive Mode</h3>
-                        <div className="w-3 h-3 bg-cyan-400 rounded-full animate-ping animation-delay-500"></div>
-                      </div>
-                      <p className="text-center text-cyan-300 font-medium">
-                        Tap anywhere on screen to trigger amazing animations
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-red-400 to-red-500 bg-clip-text text-transparent">
+                  Camera Required
+                </h2>
+                <p className="text-slate-300 leading-relaxed">{cameraError}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-95"
+                >
+                  Retry Camera Access
+                </button>
               </div>
-          ) : (
-            <>
-              {cameraError && (
-                <div className="bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/50 text-white p-8 rounded-2xl text-center space-y-6 shadow-2xl">
-                  <div className="text-6xl mb-2">📷</div>
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-red-400 to-red-500 bg-clip-text text-transparent">
-                    Camera Required
-                  </h2>
-                  <p className="text-sm text-slate-300 leading-relaxed">{cameraError}</p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
-                  >
-                    Retry Camera Access
-                  </button>
+            )}
+            {!isCameraReady && !cameraError && (
+              <div className="bg-gradient-to-br from-slate-900/98 via-slate-800/95 to-slate-900/98 backdrop-blur-xl border border-cyan-500/30 text-white p-10 rounded-3xl text-center space-y-8 shadow-2xl max-w-md mx-auto">
+                {/* Animated Camera Icon */}
+                <div className="relative inline-block">
+                  <div className="absolute inset-0 bg-cyan-500/20 rounded-full blur-2xl animate-pulse"></div>
+                  <div className="relative text-7xl animate-bounce">
+                    📹
+                  </div>
                 </div>
-              )}
-              {!isCameraReady && !cameraError && (
-                <div className="bg-gradient-to-br from-slate-900/98 via-slate-800/95 to-slate-900/98 backdrop-blur-xl border border-cyan-500/30 text-white p-10 rounded-3xl text-center space-y-8 shadow-2xl max-w-md mx-auto">
-                  {/* Animated Camera Icon */}
-                  <div className="relative inline-block">
-                    <div className="absolute inset-0 bg-cyan-500/20 rounded-full blur-2xl animate-pulse"></div>
-                    <div className="relative text-7xl animate-bounce">
-                      📹
-                    </div>
-                  </div>
 
-                  <div className="space-y-4">
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-300 via-blue-400 to-cyan-300 bg-clip-text text-transparent">
-                      Camera Access Required
-                    </h2>
-                    <p className="text-slate-300 leading-relaxed">
-                      We need your camera to create an amazing AR experience
-                    </p>
-                  </div>
-
-                  {/* Steps */}
-                  <div className="space-y-3 text-left bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50">
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-sm font-bold">1</div>
-                      <p className="text-sm text-slate-300">Click <span className="text-cyan-400 font-semibold">"Allow"</span> when prompted</p>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-sm font-bold">2</div>
-                      <p className="text-sm text-slate-300">Point your camera at the creature</p>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-sm font-bold">3</div>
-                      <p className="text-sm text-slate-300">Watch your sea creature come to life!</p>
-                    </div>
-                  </div>
-
-                  {/* Loading Animation */}
-                  <div className="flex justify-center items-center space-x-2">
-                    <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce"></div>
-                    <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-
-                  <p className="text-xs text-slate-400">
-                    🔒 Your privacy is protected - we don't record or store any video
+                <div className="space-y-4">
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-300 via-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                    Camera Access Required
+                  </h2>
+                  <p className="text-slate-300 leading-relaxed">
+                    We need your camera to create an amazing AR experience
                   </p>
                 </div>
-              )}
-            </>
-          )}
-        </div>
+
+                {/* Steps */}
+                <div className="space-y-3 text-left bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                    <p className="text-sm text-slate-300">Click <span className="text-cyan-400 font-semibold">"Allow"</span> when prompted</p>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                    <p className="text-sm text-slate-300">Point your camera at the creature</p>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                    <p className="text-sm text-slate-300">Watch your sea creature come to life!</p>
+                  </div>
+                </div>
+
+                {/* Loading Animation */}
+                <div className="flex justify-center items-center space-x-2">
+                  <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce"></div>
+                  <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+
+                <p className="text-xs text-slate-400">
+                  🔒 Your privacy is protected - we don't record or store any video
+                </p>
+              </div>
+            )}
+          </div>
 
         {/* Professional Footer with Controls */}
         <footer className="fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/98 via-black/90 to-black/60 backdrop-blur-2xl border-t border-white/10">
-          <div className="p-6 space-y-6">
-            {/* Compact Social Toggle */}
-            <div className="flex justify-center">
-              <button
-                onClick={() => setShowSocialSection(!showSocialSection)}
-                className="text-slate-400 hover:text-white text-xs transition-colors"
-                aria-label={showSocialSection ? "Hide social links" : "Show social links"}
+          <div className="p-4 sm:p-6">
+            {/* Compact Social Section - Always visible */}
+            <div className="flex items-center justify-center space-x-6 mb-3">
+              <a
+                href="https://github.com/polat-mustafa"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center space-x-2 text-slate-400 hover:text-white transition-all duration-300"
+                aria-label="GitHub"
               >
-                {showSocialSection ? '▲ Hide Social' : '▼ Show Social'}
-              </button>
+                <div className="w-8 h-8 bg-gradient-to-br from-gray-700 to-gray-900 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                  </svg>
+                </div>
+              </a>
+
+              <a
+                href="https://aquarium-web-ar.vercel.app/gallery/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center space-x-2 text-cyan-400 hover:text-cyan-300 transition-all duration-300"
+                aria-label="Gallery"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-cyan-500/20">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                </div>
+                <span className="text-xs font-medium hidden sm:inline">Gallery</span>
+              </a>
+
+              <a
+                href="https://polat-mustafa.github.io/portfolio/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center space-x-2 text-slate-400 hover:text-white transition-all duration-300"
+                aria-label="Portfolio"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 919-9" />
+                  </svg>
+                </div>
+              </a>
             </div>
 
-            {/* Collapsible Social Section */}
-            {showSocialSection && (
-              <div className="border-t border-slate-700/50 pt-3">
-                <div className="flex items-center justify-center space-x-4">
-                  {/* Compact Social Links */}
-                  <a
-                    href="https://github.com/polat-mustafa"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-6 h-6 bg-gradient-to-br from-gray-700 to-gray-900 rounded-lg flex items-center justify-center hover:scale-110 transition-all duration-300"
-                  >
-                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                    </svg>
-                  </a>
-
-                  <a
-                    href="https://polat-mustafa.github.io/portfolio/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-6 h-6 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center hover:scale-110 transition-all duration-300"
-                  >
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 919-9" />
-                    </svg>
-                  </a>
-
-                  {/* Compact Hashtags */}
-                  <div className="text-cyan-300 text-xs">
-                    #aquarium #AR
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Hashtags */}
+            <div className="text-center text-cyan-400/70 text-xs font-medium mb-2">
+              #aquarium #WebAR #OceanMagic
+            </div>
 
             {/* Bottom Handle */}
             <div className="flex justify-center">
@@ -618,50 +556,29 @@ function ARExperienceContent() {
                   onRecordingComplete={handleRecordingComplete}
                 />
 
-                {/* After recording completion, show redirect button and social media */}
+                {/* After recording completion, show redirect button */}
                 {recordedVideo && (
-                  <div className="mt-3 pt-3 border-t border-white/20 text-center space-y-3">
+                  <div className="mt-3 pt-3 border-t border-white/20 text-center space-y-2">
                     <button
                       onClick={() => {
                         console.log('🚀 Manual redirect button clicked');
                         window.location.href = '/share';
                       }}
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold py-2 px-4 rounded-lg transition-all hover:scale-105"
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-all hover:scale-105 active:scale-95 shadow-lg"
                     >
                       ✨ Share Your Video
                     </button>
-                    <div className="flex justify-center space-x-3 mb-2">
-                      <a href="https://github.com/polat-mustafa" target="_blank" className="text-gray-400 hover:text-gray-300 text-xs">
-                        GitHub
-                      </a>
-                      <a href="https://polat-mustafa.github.io/portfolio/" target="_blank" className="text-blue-400 hover:text-blue-300 text-xs">
-                        🌐 Portfolio
-                      </a>
-                    </div>
-                    <p className="text-xs text-white/60">#WebAR #OceanMagic</p>
+                    <a
+                      href="https://aquarium-web-ar.vercel.app/gallery/"
+                      className="block w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition-all hover:scale-105 active:scale-95 shadow-lg"
+                    >
+                      🎨 View Gallery
+                    </a>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Small Trigger Animation Button - below recording popup - always visible when creature is active */}
-            {activeCreature && (
-              <div className="mt-2">
-                <button
-                  onClick={handleCreatureTap}
-                  className={`w-full py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-300 ${
-                    isRecording
-                      ? 'bg-gradient-to-r from-green-500/80 to-emerald-500/80 hover:from-green-600/80 hover:to-emerald-600/80 text-white'
-                      : 'bg-gradient-to-r from-cyan-500/80 to-blue-500/80 hover:from-cyan-600/80 hover:to-blue-600/80 text-white'
-                  }`}
-                >
-                  <div className="flex items-center justify-center space-x-1.5">
-                    <span className="text-xs">✨</span>
-                    <span>{isRecording ? 'Interact' : 'Animate'}</span>
-                  </div>
-                </button>
-              </div>
-            )}
           </div>
         )}
 

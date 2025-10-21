@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useEffect } from 'react';
+import React, { memo, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
 import { useAppStore } from '@/stores/useAppStore';
@@ -39,6 +39,10 @@ const ARViewer: React.FC<ARViewerProps> = memo(({ debug = false, className = '' 
   // CRITICAL: Only select activeCreature, not currentAnimation to prevent unnecessary re-renders
   // Animation state changes should NOT cause Canvas to re-render
   const activeCreature = useAppStore((state) => state.activeCreature);
+  const setManualRotation = useAppStore((state) => state.setManualRotation);
+
+  const [isDragging, setIsDragging] = useState(false);
+  const lastTouchRef = useRef({ x: 0, y: 0 });
 
   // DIAGNOSTIC: Track Canvas mount/unmount
   useEffect(() => {
