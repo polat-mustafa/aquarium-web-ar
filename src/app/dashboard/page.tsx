@@ -1,0 +1,775 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Environment } from '@react-three/drei';
+import { useAppStore } from '@/stores/useAppStore';
+import { CreatureModel } from '@/components/ar/CreatureModel';
+import { LoginForm } from '@/components/dashboard/LoginForm';
+import { MODEL_REGISTRY } from '@/utils/modelMatcher';
+import { galleryCreatures } from '@/utils/galleryData';
+import { isAuthenticated as checkAuth, logout } from '@/utils/auth';
+import type { SeaCreature } from '@/types';
+
+interface ModelConfig {
+  id: string;
+  name: string;
+  modelPath?: string;
+  defaultSize: number;
+  category: string;
+}
+
+export default function DashboardPage() {
+  const {
+    modelSizeSettings,
+    setModelSize,
+    enableSpeechBubbles,
+    setEnableSpeechBubbles,
+    speechBubbleDuration,
+    setSpeechBubbleDuration,
+    hashtags,
+    setHashtags,
+    showTouchIndicator,
+    setShowTouchIndicator,
+    touchIndicatorDuration,
+    setTouchIndicatorDuration,
+  } = useAppStore();
+
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Model state
+  const [selectedModel, setSelectedModel] = useState<ModelConfig | null>(null);
+  const [previewSize, setPreviewSize] = useState(1.5);
+  const [models, setModels] = useState<ModelConfig[]>([]);
+
+  // Active tab
+  const [activeTab, setActiveTab] = useState<'models' | 'settings'>('models');
+
+  // Settings state
+  const [hashtagInput, setHashtagInput] = useState('');
+
+  // Check if already logged in
+  useEffect(() => {
+    setIsAuthenticated(checkAuth());
+  }, []);
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setIsAuthenticated(false);
+  };
+
+  // Load all available models
+  useEffect(() => {
+    const availableModels: ModelConfig[] = [];
+
+    // Add models from registry
+    MODEL_REGISTRY.forEach((registryItem) => {
+      if (registryItem.modelPath && registryItem.creatureName) {
+        availableModels.push({
+          id: `model-${registryItem.creatureName.toLowerCase().replace(/\s+/g, '-')}`,
+          name: registryItem.creatureName,
+          modelPath: registryItem.modelPath,
+          defaultSize: 1.5,
+          category: registryItem.category || 'fish'
+        });
+      }
+    });
+
+    // Add gallery creatures
+    galleryCreatures.forEach((creature) => {
+      const registryMatch = MODEL_REGISTRY.find(r => r.creatureId === creature.id);
+      if (registryMatch?.modelPath) {
+        const existing = availableModels.find(m => m.id === creature.id);
+        if (!existing) {
+          availableModels.push({
+            id: creature.id,
+            name: creature.name,
+            modelPath: registryMatch.modelPath,
+            defaultSize: 1.5,
+            category: (creature as any).category || 'fish'
+          });
+        }
+      }
+    });
+
+    setModels(availableModels);
+    if (availableModels.length > 0) {
+      setSelectedModel(availableModels[0]);
+      setPreviewSize(modelSizeSettings[availableModels[0].id] || 1.5);
+    }
+  }, [modelSizeSettings]);
+
+  const handleSizeChange = (size: number) => {
+    setPreviewSize(size);
+    if (selectedModel) {
+      setModelSize(selectedModel.id, size);
+    }
+  };
+
+  const handleModelSelect = (model: ModelConfig) => {
+    setSelectedModel(model);
+    setPreviewSize(modelSizeSettings[model.id] || model.defaultSize);
+  };
+
+  const handleResetSize = () => {
+    if (selectedModel) {
+      const defaultSize = 1.5;
+      setPreviewSize(defaultSize);
+      setModelSize(selectedModel.id, defaultSize);
+    }
+  };
+
+  const handleResetAll = () => {
+    models.forEach(model => {
+      setModelSize(model.id, 1.5);
+    });
+    setPreviewSize(1.5);
+  };
+
+  const handleAddHashtag = () => {
+    if (hashtagInput.trim()) {
+      const newTag = hashtagInput.startsWith('#') ? hashtagInput : `#${hashtagInput}`;
+      if (!hashtags.includes(newTag)) {
+        setHashtags([...hashtags, newTag]);
+      }
+      setHashtagInput('');
+    }
+  };
+
+  const handleRemoveHashtag = (tag: string) => {
+    setHashtags(hashtags.filter(t => t !== tag));
+  };
+
+  // Calculate real-world size in cm (assuming 1 unit = 100cm)
+  const realWorldSizeCm = Math.round(previewSize * 100);
+
+  if (!isAuthenticated) {
+    return <LoginForm onLogin={handleLogin} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+      {/* Header */}
+      <header className="bg-black/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 via-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl">
+                <span className="text-2xl">🎛️</span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+                <p className="text-sm text-cyan-300">Manage AR Experience Settings</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Link
+                href="/ar"
+                className="px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-semibold hover:from-cyan-500 hover:to-blue-500 transition-all shadow-lg hover:shadow-xl"
+              >
+                AR View
+              </Link>
+              <Link
+                href="/test-webxr"
+                className="px-5 py-2.5 bg-slate-700 text-white rounded-xl font-semibold hover:bg-slate-600 transition-all"
+              >
+                Test Page
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="px-5 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-500 transition-all"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Tab Navigation */}
+      <div className="container mx-auto px-6 py-6">
+        <div className="flex space-x-4 mb-6">
+          <button
+            onClick={() => setActiveTab('models')}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === 'models'
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg'
+                : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            🐟 3D Models & Sizes
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === 'settings'
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg'
+                : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            ⚙️ App Settings
+          </button>
+        </div>
+
+        {/* Models Tab */}
+        {activeTab === 'models' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Model List - Left Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-white">Available Models</h2>
+                  <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-sm font-semibold">
+                    {models.length}
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar">
+                  {models.map((model) => (
+                    <button
+                      key={model.id}
+                      onClick={() => handleModelSelect(model)}
+                      className={`w-full text-left p-4 rounded-xl transition-all ${
+                        selectedModel?.id === model.id
+                          ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg scale-105'
+                          : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold">{model.name}</div>
+                          <div className="text-xs opacity-70 mt-1">
+                            Size: {(modelSizeSettings[model.id] || model.defaultSize).toFixed(1)}x ({Math.round((modelSizeSettings[model.id] || model.defaultSize) * 100)}cm)
+                          </div>
+                        </div>
+                        <div className="text-2xl">🐟</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleResetAll}
+                  className="w-full mt-6 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-semibold transition-all shadow-lg"
+                >
+                  Reset All Sizes
+                </button>
+              </div>
+            </div>
+
+            {/* Preview & Controls - Right Side */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* 3D Preview with Enhanced Rulers */}
+              <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">Live Preview with Real-World Measurements</h2>
+                  {/* Size Reference Panel */}
+                  <div className="bg-gradient-to-r from-cyan-900/50 to-blue-900/50 border border-cyan-500/30 rounded-xl px-4 py-2">
+                    <div className="flex items-center space-x-3">
+                      <div className="text-center">
+                        <div className="text-cyan-400 text-xs font-semibold">Current Size</div>
+                        <div className="text-white text-lg font-bold">{realWorldSizeCm}cm</div>
+                      </div>
+                      <div className="w-px h-8 bg-cyan-500/30"></div>
+                      <div className="text-center">
+                        <div className="text-cyan-400 text-xs font-semibold">Multiplier</div>
+                        <div className="text-white text-lg font-bold">{previewSize.toFixed(2)}x</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Size Comparison Guide */}
+                <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-3 mb-4">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-blue-300 font-semibold">📏 Size Reference:</span>
+                      <span className="text-slate-300">
+                        {realWorldSizeCm <= 5 ? '🐜 Tiny (smaller than a finger)' :
+                         realWorldSizeCm <= 15 ? '🐠 Small fish (like goldfish)' :
+                         realWorldSizeCm <= 30 ? '🐟 Medium fish (like trout)' :
+                         realWorldSizeCm <= 100 ? '🦈 Large fish (like salmon)' :
+                         realWorldSizeCm <= 200 ? '🐬 Very large (like dolphin)' :
+                         '🐋 Huge (like whale)'}
+                      </span>
+                    </div>
+                    <span className="text-cyan-300">Grid shows scale proportions</span>
+                  </div>
+                </div>
+
+                <div className="relative aspect-video bg-gradient-to-br from-slate-900 to-blue-900 rounded-2xl overflow-hidden border-2 border-cyan-500/30">
+
+                  {/* Corner Origin Point - Where X and Y axes meet */}
+                  <div className="absolute left-0 bottom-0 w-16 h-16 bg-black/70 backdrop-blur-sm border-r-2 border-t-2 border-cyan-400 z-20 flex items-center justify-center">
+                    <div className="text-cyan-400 font-bold text-sm">0,0</div>
+                  </div>
+
+                  {/* Vertical Ruler (Y-axis) - Left */}
+                  <div className="absolute left-0 top-0 bottom-16 w-16 bg-black/70 backdrop-blur-sm border-r-2 border-cyan-400 z-10">
+                    {/* Top marker */}
+                    <div className="absolute top-4 left-0 right-0 text-center">
+                      <div className="text-cyan-400 font-bold text-sm mb-1">Height</div>
+                      <div className="text-cyan-300 font-mono text-xs bg-cyan-900/50 px-2 py-1 rounded mx-2">
+                        {realWorldSizeCm}cm
+                      </div>
+                      <div className="w-full h-0.5 bg-cyan-400 mt-1"></div>
+                    </div>
+
+                    {/* Intermediate markings */}
+                    <div className="absolute inset-x-0 top-20 bottom-4 flex flex-col justify-around">
+                      {[75, 50, 25].map((percent) => {
+                        const cm = Math.round(realWorldSizeCm * (percent / 100));
+                        return (
+                          <div key={percent} className="relative">
+                            <div className="w-full h-px bg-cyan-400/40"></div>
+                            <div className="absolute right-1 top-0 transform -translate-y-1/2">
+                              <div className="text-cyan-300/70 text-[10px] font-mono bg-black/50 px-1 rounded">
+                                {cm}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Horizontal Ruler (X-axis) - Bottom */}
+                  <div className="absolute left-16 right-0 bottom-0 h-16 bg-black/70 backdrop-blur-sm border-t-2 border-cyan-400 z-10">
+                    {/* Right end marker */}
+                    <div className="absolute right-4 top-0 bottom-0 flex flex-col items-center justify-center">
+                      <div className="text-cyan-400 font-bold text-sm mb-1">Width</div>
+                      <div className="text-cyan-300 font-mono text-xs bg-cyan-900/50 px-2 py-1 rounded">
+                        {realWorldSizeCm}cm
+                      </div>
+                      <div className="w-px h-full bg-cyan-400 absolute top-0"></div>
+                    </div>
+
+                    {/* Intermediate markings */}
+                    <div className="absolute inset-y-0 left-4 right-20 flex justify-around items-center">
+                      {[25, 50, 75].map((percent) => {
+                        const cm = Math.round(realWorldSizeCm * (percent / 100));
+                        return (
+                          <div key={percent} className="relative">
+                            <div className="h-full w-px bg-cyan-400/40"></div>
+                            <div className="absolute top-1 left-0 transform -translate-x-1/2">
+                              <div className="text-cyan-300/70 text-[10px] font-mono bg-black/50 px-1 rounded">
+                                {cm}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Reference Grid for Size Understanding */}
+                  <div className="absolute left-16 right-0 top-0 bottom-16 pointer-events-none opacity-20">
+                    <svg className="w-full h-full">
+                      <defs>
+                        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="cyan" strokeWidth="0.5" opacity="0.3"/>
+                        </pattern>
+                      </defs>
+                      <rect width="100%" height="100%" fill="url(#grid)" />
+                    </svg>
+                  </div>
+
+                  {/* 3D Canvas */}
+                  <div className="absolute inset-0 pl-16 pb-16">
+                    {selectedModel && selectedModel.modelPath ? (
+                      <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
+                        <ambientLight intensity={2} />
+                        <directionalLight position={[10, 10, 5]} intensity={3} />
+                        <pointLight position={[-10, -10, -10]} intensity={2} />
+                        <Environment preset="sunset" />
+
+                        <CreatureModel
+                          creature={{
+                            id: selectedModel.id,
+                            name: selectedModel.name,
+                            type: selectedModel.category,
+                            modelPath: selectedModel.modelPath,
+                            scale: previewSize,
+                            position: [0, 0, -3],
+                            description: `Preview of ${selectedModel.name}`,
+                            animation: 'idle'
+                          }}
+                          position={[0, 0, -3]}
+                          scale={previewSize}
+                        />
+
+                        <OrbitControls
+                          enablePan={true}
+                          enableZoom={true}
+                          enableRotate={true}
+                          autoRotate={true}
+                          autoRotateSpeed={2}
+                        />
+                      </Canvas>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center text-slate-400">
+                          <div className="text-6xl mb-4">🐟</div>
+                          <p>Select a model to preview</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Size Indicator Badge */}
+                  <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-sm border-2 border-cyan-400 text-cyan-400 px-4 py-2 rounded-xl font-bold text-lg z-20">
+                    📏 {realWorldSizeCm}cm ({previewSize.toFixed(1)}x)
+                  </div>
+                </div>
+              </div>
+
+              {/* Size Controls */}
+              {selectedModel && (
+                <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-white">{selectedModel.name}</h2>
+                    <div className="px-4 py-2 bg-cyan-500/20 text-cyan-300 rounded-xl text-lg font-bold">
+                      {previewSize.toFixed(1)}x = {realWorldSizeCm}cm
+                    </div>
+                  </div>
+
+                  {/* Size Slider */}
+                  <div className="space-y-6">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-white font-semibold">Model Size</label>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleSizeChange(Math.max(0.01, previewSize - 0.1))}
+                            className="w-8 h-8 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold transition-all"
+                          >
+                            -
+                          </button>
+                          <button
+                            onClick={() => handleSizeChange(Math.min(5, previewSize + 0.1))}
+                            className="w-8 h-8 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold transition-all"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.01"
+                        max="5"
+                        step="0.01"
+                        value={previewSize}
+                        onChange={(e) => handleSizeChange(parseFloat(e.target.value))}
+                        className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer slider-cyan"
+                      />
+                      <div className="flex justify-between text-xs text-slate-400 mt-2">
+                        <span>1cm (0.01x)</span>
+                        <span>150cm (1.5x Default)</span>
+                        <span>500cm (5x)</span>
+                      </div>
+                    </div>
+
+                    {/* Manual Size Input */}
+                    <div>
+                      <label className="text-white font-semibold mb-3 block">Manual Size Entry</label>
+                      <div className="flex items-center space-x-4">
+                        <div className="flex-1">
+                          <label className="text-slate-300 text-sm mb-2 block">Size Multiplier (0.01x - 5x)</label>
+                          <input
+                            type="number"
+                            min="0.01"
+                            max="5"
+                            step="0.01"
+                            value={previewSize.toFixed(2)}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              if (!isNaN(val) && val >= 0.01 && val <= 5) {
+                                handleSizeChange(val);
+                              }
+                            }}
+                            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                            placeholder="1.50"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-slate-300 text-sm mb-2 block">Real Size (1cm - 500cm)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="500"
+                            step="1"
+                            value={realWorldSizeCm}
+                            onChange={(e) => {
+                              const cm = parseInt(e.target.value);
+                              if (!isNaN(cm) && cm >= 1 && cm <= 500) {
+                                handleSizeChange(cm / 100);
+                              }
+                            }}
+                            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                            placeholder="150"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Size Presets */}
+                    <div>
+                      <label className="text-white font-semibold mb-3 block">Quick Presets</label>
+                      <div className="grid grid-cols-6 gap-3">
+                        {[0.01, 0.1, 0.5, 1.0, 1.5, 2.5].map((size) => (
+                          <button
+                            key={size}
+                            onClick={() => handleSizeChange(size)}
+                            className={`py-3 px-4 rounded-xl font-semibold transition-all ${
+                              Math.abs(previewSize - size) < 0.01
+                                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg scale-105'
+                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white'
+                            }`}
+                          >
+                            {size}x<br/>
+                            <span className="text-xs opacity-70">{Math.round(size * 100)}cm</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center space-x-4 pt-4">
+                      <button
+                        onClick={handleResetSize}
+                        className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition-all"
+                      >
+                        Reset to Default
+                      </button>
+                      <Link
+                        href={`/ar?creature=${selectedModel.id}`}
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl font-semibold transition-all shadow-lg text-center"
+                      >
+                        View in AR
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Speech Bubble Settings */}
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl">
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
+                <span className="text-3xl mr-3">💬</span>
+                Speech Bubble Settings
+              </h2>
+
+              <div className="space-y-6">
+                {/* Enable/Disable Speech Bubbles */}
+                <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-xl">
+                  <div>
+                    <h3 className="text-white font-semibold">Enable Speech Bubbles</h3>
+                    <p className="text-slate-400 text-sm">Show fish facts when tapping creatures</p>
+                  </div>
+                  <button
+                    onClick={() => setEnableSpeechBubbles(!enableSpeechBubbles)}
+                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                      enableSpeechBubbles ? 'bg-cyan-600' : 'bg-slate-600'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                        enableSpeechBubbles ? 'translate-x-7' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Speech Bubble Duration */}
+                <div>
+                  <label className="text-white font-semibold mb-3 block">
+                    Display Duration: {(speechBubbleDuration / 1000).toFixed(1)}s
+                  </label>
+                  <input
+                    type="range"
+                    min="3000"
+                    max="15000"
+                    step="1000"
+                    value={speechBubbleDuration}
+                    onChange={(e) => setSpeechBubbleDuration(parseInt(e.target.value))}
+                    className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer slider-cyan"
+                  />
+                  <div className="flex justify-between text-xs text-slate-400 mt-2">
+                    <span>3s (Quick)</span>
+                    <span>8s (Default)</span>
+                    <span>15s (Long)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Touch Indicator Settings */}
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl">
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
+                <span className="text-3xl mr-3">👆</span>
+                Touch Indicator Settings
+              </h2>
+
+              <div className="space-y-6">
+                {/* Enable/Disable Touch Indicator */}
+                <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-xl">
+                  <div>
+                    <h3 className="text-white font-semibold">Show Touch Indicator</h3>
+                    <p className="text-slate-400 text-sm">Display "Tap Fish to Interact" message</p>
+                  </div>
+                  <button
+                    onClick={() => setShowTouchIndicator(!showTouchIndicator)}
+                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                      showTouchIndicator ? 'bg-cyan-600' : 'bg-slate-600'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                        showTouchIndicator ? 'translate-x-7' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Touch Indicator Duration */}
+                <div>
+                  <label className="text-white font-semibold mb-3 block">
+                    Display Duration: {(touchIndicatorDuration / 1000).toFixed(1)}s
+                  </label>
+                  <input
+                    type="range"
+                    min="5000"
+                    max="20000"
+                    step="1000"
+                    value={touchIndicatorDuration}
+                    onChange={(e) => setTouchIndicatorDuration(parseInt(e.target.value))}
+                    className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer slider-cyan"
+                  />
+                  <div className="flex justify-between text-xs text-slate-400 mt-2">
+                    <span>5s (Quick)</span>
+                    <span>10s (Default)</span>
+                    <span>20s (Long)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Hashtags Settings */}
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl">
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
+                <span className="text-3xl mr-3">#️⃣</span>
+                Hashtag Management
+              </h2>
+
+              <div className="space-y-6">
+                {/* Current Hashtags */}
+                <div>
+                  <label className="text-white font-semibold mb-3 block">Current Hashtags</label>
+                  <div className="flex flex-wrap gap-3">
+                    {hashtags.map((tag, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center space-x-2 bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 px-4 py-2 rounded-xl"
+                      >
+                        <span className="font-mono">{tag}</span>
+                        <button
+                          onClick={() => handleRemoveHashtag(tag)}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Add Hashtag */}
+                <div>
+                  <label className="text-white font-semibold mb-3 block">Add New Hashtag</label>
+                  <div className="flex space-x-3">
+                    <input
+                      type="text"
+                      value={hashtagInput}
+                      onChange={(e) => setHashtagInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddHashtag()}
+                      placeholder="Enter hashtag..."
+                      className="flex-1 px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                    />
+                    <button
+                      onClick={handleAddHashtag}
+                      className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl font-semibold transition-all shadow-lg"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Info Panel */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-6">
+              <div className="flex items-start space-x-4">
+                <span className="text-3xl">ℹ️</span>
+                <div>
+                  <h3 className="text-white font-semibold mb-2">Settings Saved Automatically</h3>
+                  <p className="text-blue-300 text-sm leading-relaxed">
+                    All changes are saved automatically to your browser's local storage. These settings will persist across sessions and apply to the AR experience in real-time.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(51, 65, 85, 0.3);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, #06b6d4, #3b82f6);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(180deg, #0891b2, #2563eb);
+        }
+
+        .slider-cyan::-webkit-slider-thumb {
+          appearance: none;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #06b6d4, #3b82f6);
+          cursor: pointer;
+          box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+        }
+
+        .slider-cyan::-moz-range-thumb {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #06b6d4, #3b82f6);
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+        }
+      `}</style>
+    </div>
+  );
+}

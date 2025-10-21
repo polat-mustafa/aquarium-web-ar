@@ -36,6 +36,18 @@ export interface AppState {
   currentAnimation: AnimationState;
   recordedVideo: Blob | null;
   hasCameraPermission: boolean;
+  // New state for enhanced features
+  zoomLevel: number;
+  preferredLanguage: 'en' | 'tr' | 'pl';
+  showSpeechBubble: boolean;
+  modelSizeSettings: Record<string, number>;
+  manualRotation: number;
+  // Dashboard settings
+  enableSpeechBubbles: boolean;
+  speechBubbleDuration: number;
+  hashtags: string[];
+  showTouchIndicator: boolean;
+  touchIndicatorDuration: number;
 }
 
 export interface AppActions {
@@ -46,6 +58,18 @@ export interface AppActions {
   triggerSpecialAnimation: () => void;
   setLoading: (loading: boolean) => void;
   reset: () => void;
+  // New actions for enhanced features
+  setZoomLevel: (level: number) => void;
+  setPreferredLanguage: (lang: 'en' | 'tr' | 'pl') => void;
+  setShowSpeechBubble: (show: boolean) => void;
+  setModelSize: (modelId: string, size: number) => void;
+  setManualRotation: (rotation: number) => void;
+  // Dashboard settings actions
+  setEnableSpeechBubbles: (enable: boolean) => void;
+  setSpeechBubbleDuration: (duration: number) => void;
+  setHashtags: (hashtags: string[]) => void;
+  setShowTouchIndicator: (show: boolean) => void;
+  setTouchIndicatorDuration: (duration: number) => void;
 }
 
 export type AppStore = AppState & AppActions;

@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 import type { SeaCreature, AnimationState } from '@/types';
+import { useAppStore } from '@/stores/useAppStore';
 
 interface CreatureModelProps {
   creature: SeaCreature;
@@ -68,6 +69,15 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
   const scaleNormalizationRef = useRef(1);
   const [isTurning, setIsTurning] = useState(false);
   const turnAnimationRef = useRef({ progress: 0, direction: 1 });
+
+  // Dynamic position state
+  const [dynamicPosition, setDynamicPosition] = useState<[number, number, number]>(position);
+  const positionAnimationRef = useRef({ progress: 1, from: position, to: position });
+
+  // Get zoom level and speech bubble settings from store
+  const zoomLevel = useAppStore((state) => state.zoomLevel);
+  const setShowSpeechBubble = useAppStore((state) => state.setShowSpeechBubble);
+  const speechBubbleDuration = useAppStore((state) => state.speechBubbleDuration);
 
   // Check if we have a model path
   const hasModelPath = !!creature.modelPath;
@@ -175,23 +185,43 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
   // Handle tap/click on creature
   const handleTap = useCallback(() => {
     if (!isTurning) {
-      console.log('🐟 Fish tapped! Starting turn animation');
+      console.log('🐟 Fish tapped! Starting DANCE animation, showing speech bubble, and changing position');
       setIsTurning(true);
       turnAnimationRef.current = {
         progress: 0,
         direction: Math.random() > 0.5 ? 1 : -1 // Random direction
       };
 
-      // Reset after animation completes (faster)
+      // Show speech bubble
+      setShowSpeechBubble(true);
+
+      // Generate new random position within reasonable bounds
+      const newX = (Math.random() - 0.5) * 4; // -2 to 2
+      const newY = (Math.random() - 0.5) * 3; // -1.5 to 1.5
+      const newZ = position[2] + (Math.random() - 0.5) * 2; // Keep roughly same depth
+
+      // Start position animation
+      positionAnimationRef.current = {
+        progress: 0,
+        from: dynamicPosition,
+        to: [newX, newY, newZ]
+      };
+
+      // Reset after dance animation completes
       setTimeout(() => {
         setIsTurning(false);
-      }, 800);
+      }, 1200); // Longer dance time
+
+      // Auto-hide speech bubble after configured duration
+      setTimeout(() => {
+        setShowSpeechBubble(false);
+      }, speechBubbleDuration);
     }
 
     if (onClick) {
       onClick();
     }
-  }, [isTurning, onClick]);
+  }, [isTurning, onClick, setShowSpeechBubble, position, dynamicPosition, speechBubbleDuration]);
 
   // Update every frame
   useFrame((state, delta) => {
@@ -222,11 +252,34 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
       mixerRef.current.update(validDelta);
     }
 
-    // Handle tap animation
+    // Animate position change
+    if (positionAnimationRef.current.progress < 1) {
+      positionAnimationRef.current.progress += delta * 0.8; // Smooth animation
+      const progress = Math.min(positionAnimationRef.current.progress, 1);
+
+      // Smooth easing
+      const eased = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+      // Interpolate position
+      const from = positionAnimationRef.current.from;
+      const to = positionAnimationRef.current.to;
+      const newPos: [number, number, number] = [
+        from[0] + (to[0] - from[0]) * eased,
+        from[1] + (to[1] - from[1]) * eased,
+        from[2] + (to[2] - from[2]) * eased
+      ];
+
+      setDynamicPosition(newPos);
+    }
+
+    // Handle tap animation - BIG DANCE ANIMATION
     let tapRotation = 0;
     let tapJump = 0;
+    let tapWiggle = 0;
     if (isTurning && turnAnimationRef.current.progress < 1) {
-      turnAnimationRef.current.progress += delta * 2.5; // Faster animation
+      turnAnimationRef.current.progress += delta * 3; // Even faster animation
       const progress = Math.min(turnAnimationRef.current.progress, 1);
 
       // Smooth easing function
@@ -234,10 +287,12 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
         ? 2 * progress * progress
         : 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
-      // Quick turn animation (smaller 90 degree turn)
-      tapRotation = Math.sin(eased * Math.PI) * (Math.PI / 2) * turnAnimationRef.current.direction;
-      // Small jump up during turn
-      tapJump = Math.sin(eased * Math.PI) * 0.2;
+      // BIG spin animation (full 360 degree spin!)
+      tapRotation = eased * Math.PI * 2 * turnAnimationRef.current.direction;
+      // BIG jump up during turn
+      tapJump = Math.sin(eased * Math.PI) * 0.8;
+      // Side-to-side wiggle for dance effect
+      tapWiggle = Math.sin(eased * Math.PI * 4) * 0.3;
     }
 
     // Add swimming motion for fish
@@ -253,26 +308,26 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
     // Additional tilt for realism
     const tiltZ = Math.cos(time * 0.5) * 0.2;
 
-    // Apply animated position (add tap jump)
+    // Apply animated position (use dynamic position + swimming motion + tap jump + wiggle)
     groupRef.current.position.set(
-      position[0] + swayX,
-      position[1] + floatY + tapJump,
-      position[2]
+      dynamicPosition[0] + swayX + tapWiggle,
+      dynamicPosition[1] + floatY + tapJump,
+      dynamicPosition[2]
     );
 
     // Apply rotation (combine natural swimming with tap rotation)
     groupRef.current.rotation.y = naturalTurnRotation + tapRotation;
-    groupRef.current.rotation.z = tiltZ;
+    groupRef.current.rotation.z = tiltZ + (isTurning ? Math.sin(turnAnimationRef.current.progress * Math.PI * 2) * 0.5 : 0);
 
-    // Keep scale updated
-    groupRef.current.scale.setScalar(scale * scaleNormalizationRef.current);
+    // Keep scale updated with zoom level
+    groupRef.current.scale.setScalar(scale * scaleNormalizationRef.current * zoomLevel);
   });
 
   return (
     <group
       ref={groupRef}
       position={position}
-      scale={scale * scaleNormalizationRef.current}
+      scale={scale * scaleNormalizationRef.current * zoomLevel}
       onClick={handleTap}
       onPointerOver={(e) => {
         e.stopPropagation();

@@ -3,14 +3,15 @@
 import React, { useState, useEffect, useRef, Suspense, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ARViewer } from '@/components/ar/ARViewer';
-import { RecordButton } from '@/components/ui/RecordButton';
 import { SharePanel } from '@/components/ui/SharePanel';
+import { SpeechBubble } from '@/components/ui/SpeechBubble';
 import { useAppStore } from '@/stores/useAppStore';
 import { galleryCreatures } from '@/utils/galleryData';
 import { MODEL_REGISTRY } from '@/utils/modelMatcher';
 import { initializeQRDetection, createCameraStream, stopCameraStream } from '@/utils/qrDetection';
 import type { QRDetectionResult } from '@/utils/qrDetection';
 import { hideGlobalLoading } from '@/components/ui/LoadingOverlay';
+import { getRandomFishFact } from '@/utils/fishFacts';
 
 function ARExperienceContent() {
   // CRITICAL FIX: Extract creature ID once with useMemo to prevent infinite re-renders
@@ -22,22 +23,36 @@ function ARExperienceContent() {
   const creatureLoadedRef = useRef(false); // Prevent re-loading creature
   const arInitializedRef = useRef(false); // Prevent re-initializing AR
 
-  const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
-  const [showSharePanel, setShowSharePanel] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [showRecordingPopup, setShowRecordingPopup] = useState(true);
   const [showCreaturePopup, setShowCreaturePopup] = useState(false);
   const [bubbles, setBubbles] = useState<Array<{ id: number; x: number; y: number }>>([]);
 
   const {
     activeCreature,
-    isRecording,
     triggerSpecialAnimation,
     setActiveCreature,
     initializeAR,
     isARInitialized,
+    showSpeechBubble,
+    setShowSpeechBubble,
+    preferredLanguage,
+    setPreferredLanguage,
+    zoomLevel,
+    setZoomLevel,
+    modelSizeSettings,
+    enableSpeechBubbles,
+    speechBubbleDuration,
+    showTouchIndicator,
+    touchIndicatorDuration,
+    hashtags,
   } = useAppStore();
+
+  // State for current fish fact
+  const [currentFact, setCurrentFact] = useState<ReturnType<typeof getRandomFishFact>>(null);
+
+  // Pinch zoom state
+  const lastPinchDistance = useRef<number | null>(null);
 
   // Set body data-page attribute for AR-specific styles
   useEffect(() => {
@@ -145,13 +160,16 @@ function ARExperienceContent() {
     }
 
     if (resolvedName) {
+      // Use custom size from settings if available, otherwise use default
+      const customScale = modelSizeSettings[creatureIdFromUrl] || 1.5;
+
       const creature = {
         id: creatureIdFromUrl,
         type: resolvedType,
         name: resolvedName,
         modelPath: resolvedModelPath,
         description: `Experience the amazing ${resolvedName} in AR!`,
-        scale: 1.5,
+        scale: customScale,
         position: [0, 0, -3] as [number, number, number],
         animation: 'idle' as const
       };
@@ -173,7 +191,7 @@ function ARExperienceContent() {
     } else {
       console.warn('⚠️ Could not resolve creature from URL:', creatureIdFromUrl);
     }
-  }, [creatureIdFromUrl]); // Only depend on the memoized creature ID
+  }, [creatureIdFromUrl, modelSizeSettings, setActiveCreature]); // Only depend on the memoized creature ID and settings
 
   // QR Detection handler - useCallback to prevent re-creation
   const handleQRDetection = useCallback((result: QRDetectionResult) => {
@@ -194,21 +212,6 @@ function ARExperienceContent() {
     }
   }, [setActiveCreature]);
 
-  // Recording completion handler
-  const handleRecordingComplete = useCallback((blob: Blob) => {
-    console.log('🎯 Recording complete!', {
-      blobSize: blob.size,
-      blobType: blob.type
-    });
-
-    if (blob.size === 0) {
-      console.error('❌ Blob is empty!');
-      return;
-    }
-
-    setRecordedVideo(blob);
-    setShowSharePanel(true);
-  }, []);
 
   // Creature tap handler
   const handleCreatureTap = useCallback(() => {
@@ -239,6 +242,39 @@ function ARExperienceContent() {
     }, 1000);
   }, []);
 
+  // Handle pinch zoom
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+
+      if (lastPinchDistance.current !== null) {
+        const delta = distance - lastPinchDistance.current;
+        const zoomDelta = delta * 0.01;
+        setZoomLevel(zoomLevel + zoomDelta);
+      }
+
+      lastPinchDistance.current = distance;
+    }
+  }, [zoomLevel, setZoomLevel]);
+
+  const handleTouchEnd = useCallback(() => {
+    lastPinchDistance.current = null;
+  }, []);
+
+  // Update fish fact when speech bubble is shown
+  useEffect(() => {
+    if (showSpeechBubble && activeCreature) {
+      const fact = getRandomFishFact(activeCreature.name);
+      setCurrentFact(fact);
+    }
+  }, [showSpeechBubble, activeCreature]);
+
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 relative">
       {/* Camera Video Background */}
@@ -258,6 +294,8 @@ function ARExperienceContent() {
           style={{ background: 'transparent', pointerEvents: 'auto' }}
           onClick={handleScreenTap}
           onTouchStart={handleScreenTap}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           <ARViewer className="w-full h-full" />
 
@@ -281,34 +319,94 @@ function ARExperienceContent() {
             </div>
           ))}
 
-          {/* Animated Touch Indicator - Shows for 10 seconds - Right side, smaller */}
-          {activeCreature && (
-            <div className="absolute top-1/3 right-8 pointer-events-none animate-pulse">
-              <div className="relative">
-                {/* Animated finger pointer - smaller */}
-                <div className="text-4xl animate-bounce" style={{
-                  animation: 'bounce 2s infinite, fadeOut 10s forwards',
-                  textShadow: '0 0 15px rgba(6, 182, 212, 0.8), 0 0 30px rgba(6, 182, 212, 0.4)'
-                }}>
-                  👆
-                </div>
-
-                {/* Tap indication with ripple effect */}
-                <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-                  <div className="bg-cyan-500/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-lg border border-cyan-300/50"
-                    style={{ animation: 'fadeOut 10s forwards' }}>
-                    Tap & Drag
+          {/* Animated Touch Indicator - Controlled by dashboard settings */}
+          {activeCreature && showTouchIndicator && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+              <div className="relative flex flex-col items-center">
+                {/* Professional instruction card */}
+                <div className="bg-gradient-to-r from-cyan-500/95 via-blue-500/95 to-cyan-500/95 backdrop-blur-md text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-2xl border-2 border-cyan-300/60 mb-4"
+                  style={{ animation: `fadeOut ${touchIndicatorDuration / 1000}s forwards` }}>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-2xl animate-bounce" style={{
+                      animation: 'bounce 2s infinite',
+                      textShadow: '0 0 10px rgba(255, 255, 255, 0.5)'
+                    }}>👆</span>
+                    <span>Tap Fish to Interact</span>
                   </div>
                 </div>
 
-                {/* Ripple circles - smaller */}
+                {/* Ripple effect for emphasis */}
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="absolute w-12 h-12 border-2 border-cyan-400 rounded-full animate-ping opacity-75"
-                    style={{ animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite, fadeOut 10s forwards' }}></div>
-                  <div className="absolute w-10 h-10 border-2 border-blue-400 rounded-full animate-ping opacity-50"
-                    style={{ animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite 0.5s, fadeOut 10s forwards' }}></div>
+                  <div className="absolute w-20 h-20 border-3 border-cyan-400/70 rounded-full animate-ping"
+                    style={{ animation: `ping 2.5s cubic-bezier(0, 0, 0.2, 1) infinite, fadeOut ${touchIndicatorDuration / 1000}s forwards` }}></div>
+                  <div className="absolute w-16 h-16 border-3 border-blue-400/50 rounded-full animate-ping"
+                    style={{ animation: `ping 2.5s cubic-bezier(0, 0, 0.2, 1) infinite 0.6s, fadeOut ${touchIndicatorDuration / 1000}s forwards` }}></div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Speech Bubble for Fish Facts - Controlled by dashboard settings */}
+          {enableSpeechBubbles && showSpeechBubble && currentFact && activeCreature && (
+            <div className="absolute top-[15%] left-1/2 transform -translate-x-1/2 z-50 pointer-events-auto">
+              <SpeechBubble
+                fact={currentFact}
+                language={preferredLanguage}
+                onLanguageChange={setPreferredLanguage}
+                onClose={() => setShowSpeechBubble(false)}
+              />
+            </div>
+          )}
+
+          {/* Zoom Controls - Bottom Right */}
+          {activeCreature && (
+            <div className="absolute bottom-32 right-4 z-40 flex flex-col space-y-3">
+              {/* Zoom In Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoomLevel(zoomLevel + 0.2);
+                }}
+                className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95"
+                aria-label="Zoom In"
+              >
+                <svg className="w-7 h-7 text-white font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+
+              {/* Zoom Level Indicator */}
+              <div className="bg-black/80 backdrop-blur-sm text-white text-xs font-bold px-3 py-2 rounded-full text-center border-2 border-cyan-400/50">
+                {Math.round(zoomLevel * 100)}%
+              </div>
+
+              {/* Zoom Out Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoomLevel(zoomLevel - 0.2);
+                }}
+                className="w-14 h-14 bg-gradient-to-br from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95"
+                aria-label="Zoom Out"
+              >
+                <svg className="w-7 h-7 text-white font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" />
+                </svg>
+              </button>
+
+              {/* Reset Zoom Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoomLevel(1.5);
+                }}
+                className="w-14 h-14 bg-gradient-to-br from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95"
+                aria-label="Reset Zoom"
+              >
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
             </div>
           )}
         </div>
@@ -389,15 +487,6 @@ function ARExperienceContent() {
 
         {/* Main Content Area */}
         <main className="flex-1 pt-20 pb-8 overflow-y-auto">
-          {/* Minimal Recording Status */}
-          {isRecording && (
-            <div className="fixed top-20 right-6 z-50">
-              <div className="bg-red-500/90 backdrop-blur-sm text-white px-3 py-2 rounded-full flex items-center space-x-2 shadow-lg border border-red-400/30">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium">REC</span>
-              </div>
-            </div>
-          )}
 
           {/* Content Container */}
           <div className="px-4 sm:px-6 space-y-6">
@@ -517,9 +606,9 @@ function ARExperienceContent() {
               </a>
             </div>
 
-            {/* Hashtags */}
+            {/* Hashtags - From dashboard settings */}
             <div className="text-center text-cyan-400/70 text-xs font-medium mb-2">
-              #aquarium #WebAR #OceanMagic
+              {hashtags.join(' ')}
             </div>
 
             {/* Bottom Handle */}
@@ -530,73 +619,6 @@ function ARExperienceContent() {
         </footer>
         </main>
 
-        {/* Fixed Recording Pop-up (only when camera is active) */}
-        {isCameraReady && showRecordingPopup && (
-          <div
-            className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-40"
-          >
-            <div className="bg-black/70 backdrop-blur-lg border border-white/20 rounded-xl px-3 py-2 shadow-lg max-w-[200px]">
-              {/* Hide Button - only show when not recording */}
-              {!isRecording && (
-                <div className="flex justify-end mb-1">
-                  <button
-                    onClick={() => setShowRecordingPopup(false)}
-                    className="text-white/60 hover:text-white text-sm transition-colors"
-                    aria-label="Hide recording controls"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-
-              {/* Recording Section */}
-              <div className="flex flex-col items-center space-y-2">
-                <RecordButton
-                  maxDuration={15}
-                  onRecordingComplete={handleRecordingComplete}
-                />
-
-                {/* After recording completion, show redirect button */}
-                {recordedVideo && (
-                  <div className="mt-3 pt-3 border-t border-white/20 text-center space-y-2">
-                    <button
-                      onClick={() => {
-                        console.log('🚀 Manual redirect button clicked');
-                        window.location.href = '/share';
-                      }}
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-all hover:scale-105 active:scale-95 shadow-lg"
-                    >
-                      ✨ Share Your Video
-                    </button>
-                    <a
-                      href="https://aquarium-web-ar.vercel.app/gallery/"
-                      className="block w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition-all hover:scale-105 active:scale-95 shadow-lg"
-                    >
-                      🎨 View Gallery
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* Show Recording Button (when popup is hidden) */}
-        {isCameraReady && !showRecordingPopup && (
-          <div className="fixed bottom-6 right-6 z-40">
-            <button
-              onClick={() => setShowRecordingPopup(true)}
-              className="bg-red-500/80 hover:bg-red-600/90 backdrop-blur-sm border border-red-400/50 text-white p-3 rounded-full shadow-xl transition-all duration-300 hover:scale-110"
-              aria-label="Show recording controls"
-            >
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/>
-                <circle cx="12" cy="12" r="4" fill="currentColor"/>
-              </svg>
-            </button>
-          </div>
-        )}
 
         {/* Transparent QR Scanning Overlay */}
         {isCameraReady && !activeCreature && (
@@ -648,18 +670,6 @@ function ARExperienceContent() {
         }}
         creatureName={activeCreature?.name || 'sea-creature'}
       />
-
-      {/* Tap Overlay for AR Interactions - now enabled during recording for 3D models */}
-      {activeCreature && (
-        <div
-          className="fixed inset-0 z-15 bg-transparent cursor-pointer"
-          onClick={handleCreatureTap}
-          style={{
-            background: 'transparent',
-            pointerEvents: 'auto'
-          }}
-        />
-      )}
     </div>
   );
 }

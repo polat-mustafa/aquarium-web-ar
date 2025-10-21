@@ -2,6 +2,28 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { AppStore, SeaCreature, AnimationState } from '@/types';
 
+// Helper to load from localStorage
+const loadFromStorage = <T>(key: string, defaultValue: T): T => {
+  if (typeof window === 'undefined') return defaultValue;
+  try {
+    const item = window.localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.warn(`Error loading ${key} from localStorage:`, error);
+    return defaultValue;
+  }
+};
+
+// Helper to save to localStorage
+const saveToStorage = <T>(key: string, value: T): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn(`Error saving ${key} to localStorage:`, error);
+  }
+};
+
 export const useAppStore = create<AppStore>()(
   devtools(
     (set, get) => ({
@@ -13,6 +35,18 @@ export const useAppStore = create<AppStore>()(
       currentAnimation: 'idle',
       recordedVideo: null,
       hasCameraPermission: false,
+      // New state for enhanced features - Load from localStorage
+      zoomLevel: loadFromStorage('aquarium-zoom-level', 1.5),
+      preferredLanguage: loadFromStorage('aquarium-language', 'en') as 'en' | 'tr' | 'pl',
+      showSpeechBubble: false,
+      modelSizeSettings: loadFromStorage('aquarium-model-sizes', {}),
+      manualRotation: 0,
+      // Dashboard settings - Load from localStorage
+      enableSpeechBubbles: loadFromStorage('aquarium-enable-speech-bubbles', true),
+      speechBubbleDuration: loadFromStorage('aquarium-speech-bubble-duration', 8000),
+      hashtags: loadFromStorage('aquarium-hashtags', ['#aquarium', '#WebAR', '#OceanMagic']),
+      showTouchIndicator: loadFromStorage('aquarium-show-touch-indicator', true),
+      touchIndicatorDuration: loadFromStorage('aquarium-touch-indicator-duration', 10000),
 
       // Actions
       initializeAR: async () => {
@@ -136,10 +170,77 @@ export const useAppStore = create<AppStore>()(
             currentAnimation: 'idle',
             recordedVideo: null,
             hasCameraPermission: false,
+            zoomLevel: 1.5,
+            preferredLanguage: 'en',
+            showSpeechBubble: false,
+            modelSizeSettings: {},
+            manualRotation: 0,
           },
           false,
           'reset'
         );
+      },
+
+      // New actions for enhanced features
+      setZoomLevel: (level: number) => {
+        const newLevel = Math.max(0.5, Math.min(3, level));
+        saveToStorage('aquarium-zoom-level', newLevel);
+        set({ zoomLevel: newLevel }, false, 'setZoomLevel');
+      },
+
+      setPreferredLanguage: (lang: 'en' | 'tr' | 'pl') => {
+        saveToStorage('aquarium-language', lang);
+        set({ preferredLanguage: lang }, false, 'setPreferredLanguage');
+      },
+
+      setShowSpeechBubble: (show: boolean) => {
+        set({ showSpeechBubble: show }, false, 'setShowSpeechBubble');
+      },
+
+      setModelSize: (modelId: string, size: number) => {
+        const { modelSizeSettings } = get();
+        const newSettings = {
+          ...modelSizeSettings,
+          [modelId]: size,
+        };
+        saveToStorage('aquarium-model-sizes', newSettings);
+        set(
+          {
+            modelSizeSettings: newSettings,
+          },
+          false,
+          'setModelSize'
+        );
+      },
+
+      setManualRotation: (rotation: number) => {
+        set({ manualRotation: rotation }, false, 'setManualRotation');
+      },
+
+      // Dashboard settings actions
+      setEnableSpeechBubbles: (enable: boolean) => {
+        saveToStorage('aquarium-enable-speech-bubbles', enable);
+        set({ enableSpeechBubbles: enable }, false, 'setEnableSpeechBubbles');
+      },
+
+      setSpeechBubbleDuration: (duration: number) => {
+        saveToStorage('aquarium-speech-bubble-duration', duration);
+        set({ speechBubbleDuration: duration }, false, 'setSpeechBubbleDuration');
+      },
+
+      setHashtags: (hashtags: string[]) => {
+        saveToStorage('aquarium-hashtags', hashtags);
+        set({ hashtags }, false, 'setHashtags');
+      },
+
+      setShowTouchIndicator: (show: boolean) => {
+        saveToStorage('aquarium-show-touch-indicator', show);
+        set({ showTouchIndicator: show }, false, 'setShowTouchIndicator');
+      },
+
+      setTouchIndicatorDuration: (duration: number) => {
+        saveToStorage('aquarium-touch-indicator-duration', duration);
+        set({ touchIndicatorDuration: duration }, false, 'setTouchIndicatorDuration');
       },
     }),
     {
