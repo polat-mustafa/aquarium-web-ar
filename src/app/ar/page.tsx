@@ -29,6 +29,10 @@ function ARExperienceContent() {
   const [bubbles, setBubbles] = useState<Array<{ id: number; x: number; y: number }>>([]);
   const [showSharePanel, setShowSharePanel] = useState(false);
   const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
   const {
     activeCreature,
@@ -269,6 +273,67 @@ function ARExperienceContent() {
     lastPinchDistance.current = null;
   }, []);
 
+  // Video recording handlers
+  const startRecording = useCallback(async () => {
+    try {
+      if (!streamRef.current) return;
+
+      recordedChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(streamRef.current, {
+        mimeType: 'video/webm;codecs=vp9',
+      });
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        setRecordedVideo(blob);
+        setShowSharePanel(true);
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+    }
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  }, [isRecording]);
+
+  // Fullscreen handler
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch((err) => {
+        console.error('Error entering fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsFullscreen(false);
+      });
+    }
+  }, []);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   // Update fish fact when speech bubble is shown
   useEffect(() => {
     if (showSpeechBubble && activeCreature) {
@@ -360,54 +425,55 @@ function ARExperienceContent() {
             </div>
           )}
 
-          {/* Zoom Controls - Bottom Right */}
+          {/* AR Controls - Bottom Right */}
           {activeCreature && (
             <div className="absolute bottom-32 right-4 z-40 flex flex-col space-y-3">
-              {/* Zoom In Button */}
+              {/* Video Recording Button */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setZoomLevel(zoomLevel + 0.2);
+                  if (isRecording) {
+                    stopRecording();
+                  } else {
+                    startRecording();
+                  }
                 }}
-                className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95"
-                aria-label="Zoom In"
+                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95 ${
+                  isRecording
+                    ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 animate-pulse'
+                    : 'bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500'
+                }`}
+                aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
               >
-                <svg className="w-7 h-7 text-white font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
-                </svg>
+                {isRecording ? (
+                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                ) : (
+                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="8" />
+                  </svg>
+                )}
               </button>
 
-              {/* Zoom Level Indicator */}
-              <div className="bg-black/80 backdrop-blur-sm text-white text-xs font-bold px-3 py-2 rounded-full text-center border-2 border-cyan-400/50">
-                {Math.round(zoomLevel * 100)}%
-              </div>
-
-              {/* Zoom Out Button */}
+              {/* Fullscreen Button */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setZoomLevel(zoomLevel - 0.2);
-                }}
-                className="w-14 h-14 bg-gradient-to-br from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95"
-                aria-label="Zoom Out"
-              >
-                <svg className="w-7 h-7 text-white font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" />
-                </svg>
-              </button>
-
-              {/* Reset Zoom Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setZoomLevel(1.5);
+                  toggleFullscreen();
                 }}
                 className="w-14 h-14 bg-gradient-to-br from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95"
-                aria-label="Reset Zoom"
+                aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
               >
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+                {isFullscreen ? (
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                )}
               </button>
             </div>
           )}
