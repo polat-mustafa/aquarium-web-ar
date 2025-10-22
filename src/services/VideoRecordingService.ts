@@ -19,7 +19,8 @@ export class RecordingManager {
   private webglCanvasWarned: boolean = false;
   private overlayCanvas: HTMLCanvasElement | null = null;
   private frameCount: number = 0;
-  private overlayUpdateInterval: number = 3; // Update overlay every N frames for performance
+  private overlayUpdateInterval: number = 1; // Update overlay every frame for accurate capture
+  private isCapturingOverlay: boolean = false;
 
   constructor() {
     console.log('📹 RecordingManager initialized');
@@ -124,25 +125,54 @@ export class RecordingManager {
    * Capture overlay elements (speech bubbles, effects) using html2canvas
    */
   private async captureOverlay(): Promise<void> {
-    // Find the AR overlay container
+    // Prevent multiple simultaneous captures
+    if (this.isCapturingOverlay) return;
+
+    // Find all overlay elements we want to capture
     const overlayContainer = document.getElementById('ar-overlay-content');
-    if (!overlayContainer) return;
+    if (!overlayContainer) {
+      return;
+    }
+
+    this.isCapturingOverlay = true;
 
     try {
+      // Create a temporary canvas if needed
+      if (!this.overlayCanvas) {
+        this.overlayCanvas = document.createElement('canvas');
+        this.overlayCanvas.width = this.canvas?.width || window.innerWidth;
+        this.overlayCanvas.height = this.canvas?.height || window.innerHeight;
+        console.log('🎨 Overlay canvas created:', this.overlayCanvas.width, 'x', this.overlayCanvas.height);
+      }
+
       const canvas = await html2canvas(overlayContainer, {
         backgroundColor: null, // Transparent background
         logging: false,
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: this.overlayCanvas.width,
+        height: this.overlayCanvas.height,
         windowWidth: window.innerWidth,
         windowHeight: window.innerHeight,
-        scale: 1,
-        useCORS: true
+        scale: 0.5, // Reduce quality for performance
+        useCORS: true,
+        allowTaint: true,
+        foreignObjectRendering: false, // Disable for better compatibility
+        removeContainer: false,
+        ignoreElements: (element) => {
+          // Skip WebGL canvas to avoid duplicate rendering
+          return element.tagName === 'CANVAS';
+        }
       });
 
-      this.overlayCanvas = canvas;
+      // Copy to our overlay canvas
+      const ctx = this.overlayCanvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+        ctx.drawImage(canvas, 0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+      }
     } catch (error) {
       console.error('❌ Failed to capture overlay:', error);
+    } finally {
+      this.isCapturingOverlay = false;
     }
   }
 
@@ -247,6 +277,7 @@ export class RecordingManager {
     this.webglCanvasWarned = false;
     this.frameCount = 0;
     this.overlayCanvas = null;
+    this.isCapturingOverlay = false;
 
     // Start compositing frames
     this.animationFrameId = requestAnimationFrame(() => this.compositeFrame());
@@ -338,6 +369,7 @@ export class RecordingManager {
     this.ctx = null;
     this.overlayCanvas = null;
     this.frameCount = 0;
+    this.isCapturingOverlay = false;
     console.log('🧹 RecordingManager cleaned up');
   }
 }
