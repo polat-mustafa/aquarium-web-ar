@@ -191,16 +191,23 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
             {modelLoadError ? (
               <div className="text-center p-8">
                 <div className="text-6xl mb-4">⚠️</div>
-                <h3 className="text-white font-bold text-xl mb-2">Model Load Error</h3>
-                <p className="text-slate-400 text-sm mb-4">Unable to load the 3D model</p>
+                <h3 className="text-white font-bold text-xl mb-2">3D Preview Unavailable</h3>
+                <p className="text-slate-400 text-sm mb-4">Can't load 3D preview, but you can still see file info below</p>
                 <div className="text-xs text-slate-500 font-mono mb-4">{model.modelPath}</div>
-                <div className="text-xs text-yellow-400 bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3">
-                  <p className="mb-1">Possible issues:</p>
+                <div className="text-xs text-yellow-400 bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3 mb-3">
+                  <p className="mb-1 font-semibold">Common issue:</p>
                   <ul className="text-left list-disc list-inside">
-                    <li>File doesn't exist at path</li>
-                    <li>GLTF missing .bin or textures</li>
-                    <li>File is corrupted</li>
-                    <li>Wrong file format</li>
+                    <li>GLTF format missing .bin file</li>
+                    <li>Convert to GLB format for better results</li>
+                  </ul>
+                </div>
+                <div className="text-xs text-cyan-400 bg-cyan-900/20 border border-cyan-500/30 rounded-lg p-3">
+                  <p className="font-semibold">✓ You can still:</p>
+                  <ul className="text-left list-disc list-inside mt-1">
+                    <li>See file information below</li>
+                    <li>Check file size and format</li>
+                    <li>Test in AR (might work)</li>
+                    <li>Approve and add to gallery</li>
                   </ul>
                 </div>
               </div>
