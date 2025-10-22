@@ -480,25 +480,19 @@ function ARExperienceContent() {
                   startRecording();
                 }
               }}
-              className={`w-16 h-16 rounded-2xl flex flex-col items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95 ${
+              className={`relative w-20 h-20 rounded-full flex items-center justify-center shadow-2xl border-4 border-white transition-all hover:scale-110 active:scale-95 ${
                 isRecording
-                  ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 animate-pulse'
-                  : 'bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500'
+                  ? 'bg-red-500 animate-pulse'
+                  : 'bg-white'
               }`}
               aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
             >
               {isRecording ? (
-                <>
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="6" y="6" width="12" height="12" rx="2" />
-                  </svg>
-                  <span className="text-[8px] font-bold text-white mt-0.5">STOP</span>
-                </>
+                <div className="w-8 h-8 bg-white rounded-sm" />
               ) : (
-                <>
-                  <div className="w-4 h-4 bg-white rounded-full mb-0.5"></div>
-                  <span className="text-[10px] font-bold text-white">REC</span>
-                </>
+                <div className="w-16 h-16 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
+                  <span className="text-[10px] font-extrabold text-white tracking-wider">REC</span>
+                </div>
               )}
             </button>
 
