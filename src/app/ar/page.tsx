@@ -393,18 +393,14 @@ function ARExperienceContent() {
 
       {/* AR Content Overlay - Render Three.js model viewer - Always visible */}
       <div
-        className="fixed inset-0 w-full h-full z-10 pointer-events-none"
-        style={{ background: 'transparent' }}
+        className="fixed inset-0 w-full h-full z-20"
+        style={{ background: 'transparent', pointerEvents: 'auto' }}
+        onClick={handleScreenTap}
+        onTouchStart={handleScreenTap}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
-        <div
-          className="w-full h-full pointer-events-auto"
-          onClick={handleScreenTap}
-          onTouchStart={handleScreenTap}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          <ARViewer className="w-full h-full" />
-        </div>
+        <ARViewer className="w-full h-full" />
 
           {/* Bubble effects */}
           {bubbles.map(bubble => (
@@ -467,7 +463,7 @@ function ARExperienceContent() {
 
           {/* Speech Bubble for Fish Facts - Controlled by dashboard settings */}
           {enableSpeechBubbles && showSpeechBubble && currentFact && activeCreature && (
-            <div className="absolute top-[15%] left-1/2 transform -translate-x-1/2 z-50 pointer-events-auto">
+            <div className="absolute top-[15%] left-1/2 transform -translate-x-1/2 z-40 pointer-events-auto">
               <SpeechBubble
                 fact={currentFact}
                 language={preferredLanguage}
@@ -478,7 +474,7 @@ function ARExperienceContent() {
           )}
 
           {/* AR Controls - Bottom Right - Always visible */}
-          <div className="absolute bottom-32 right-4 z-50 flex flex-col space-y-3 pointer-events-auto">
+          <div className="absolute bottom-32 right-4 z-40 flex flex-col space-y-3 pointer-events-auto">
             {/* Video Recording Button */}
             <button
               onClick={(e) => {
@@ -531,11 +527,10 @@ function ARExperienceContent() {
               )}
             </button>
           </div>
-        </div>
       </div>
 
       {/* Mobile UI - Professional Overlay */}
-      <div className="relative z-20 w-full min-h-screen flex flex-col pointer-events-none"
+      <div className="relative z-30 w-full min-h-screen flex flex-col pointer-events-none"
         style={{
           background: isCameraReady
             ? 'transparent'
@@ -543,7 +538,7 @@ function ARExperienceContent() {
         }}
       >
         {/* Professional Sticky Header */}
-        <header className="fixed top-0 left-0 right-0 z-30 bg-gradient-to-b from-black/95 via-black/85 to-transparent backdrop-blur-xl border-b border-white/10 pointer-events-auto">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/95 via-black/85 to-transparent backdrop-blur-xl border-b border-white/10 pointer-events-auto">
           <div className="safe-area-inset-top">
             <div className="px-4 py-3 sm:px-6">
               <div className="flex items-center justify-between">
@@ -680,7 +675,7 @@ function ARExperienceContent() {
           </div>
 
         {/* Professional Footer with Controls */}
-        <footer className="fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/98 via-black/90 to-black/60 backdrop-blur-2xl border-t border-white/10 pointer-events-auto">
+        <footer className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black/98 via-black/90 to-black/60 backdrop-blur-2xl border-t border-white/10 pointer-events-auto">
           <div className="p-4 sm:p-6">
             {/* Compact Social Section - Always visible */}
             <div className="flex items-center justify-center space-x-6 mb-3">
