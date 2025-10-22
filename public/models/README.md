@@ -62,6 +62,41 @@ Once you upload a 3D model:
 - **Scale**: Models will be auto-scaled to fit AR viewport
 - **Orientation**: Y-up is recommended
 
+## ⚠️ IMPORTANT: GLTF vs GLB
+
+**Always prefer GLB format!**
+
+- **GLB** = Single binary file (✅ Recommended)
+  - Contains everything: geometry, textures, materials
+  - Just works - drag and drop
+
+- **GLTF** = Multiple files (⚠️ Requires .bin file)
+  - Needs: `.gltf` (JSON) + `.bin` (binary data) + texture files
+  - If `.bin` file is missing, the model **will not load**
+  - You'll see "3D Preview Unavailable" error
+
+### Current Issue: Koi Fish Model
+
+The current `Koi fish - fish.gltf` file is **broken** because it's missing `scene.bin`.
+
+**How to fix:**
+1. Download a complete Koi fish model in GLB format from:
+   - [Animated Koi Fish (Sketchfab)](https://sketchfab.com/3d-models/animated-low-poly-koi-fish-65fc24a235f64bf3b4951c0111d0e4d4)
+   - Or search Sketchfab for "koi fish" and filter by "Downloadable"
+
+2. Save as: `public/models/Koi fish - fish.glb`
+
+3. Delete the old GLTF file:
+   ```bash
+   rm "public/models/Koi fish - fish.gltf"
+   ```
+
+4. Update `src/utils/modelMatcher.ts`:
+   - Change `fileName: 'Koi fish - fish.gltf'` to `'Koi fish - fish.glb'`
+   - Change `approved: false` to `approved: true`
+
+5. Refresh the dashboard - Koi fish will now work!
+
 ## Example Structure
 
 ```

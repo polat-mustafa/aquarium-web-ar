@@ -63,6 +63,7 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
   const [expandedView, setExpandedView] = useState(false);
   const [modelLoadError, setModelLoadError] = useState(false);
   const [modelLoading, setModelLoading] = useState(true);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
 
   const categories = [
     { value: 'fish', label: 'Fish', emoji: '🐟' },
@@ -145,6 +146,46 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
     }
     getFileInfo();
   }, [model.modelPath]);
+
+  // Get source URL from metadata file
+  useEffect(() => {
+    async function getSourceUrl() {
+      try {
+        // Try to fetch the .meta.json file
+        const metadataPath = model.modelPath.replace(/\.(glb|gltf)$/i, '.meta.json');
+        const response = await fetch(metadataPath);
+
+        if (response.ok) {
+          const metadata = await response.json();
+          if (metadata.source) {
+            setSourceUrl(metadata.source);
+            console.log('✅ Found source URL from metadata:', metadata.source);
+          }
+        } else {
+          console.log('ℹ️ No metadata file found for:', model.fileName);
+
+          // Fallback: Try Zone.Identifier file (Windows format)
+          try {
+            const identifierPath = `${model.modelPath}:Zone.Identifier`;
+            const idResponse = await fetch(identifierPath);
+            if (idResponse.ok) {
+              const content = await idResponse.text();
+              const hostUrlMatch = content.match(/HostUrl=(.+)/);
+              if (hostUrlMatch && hostUrlMatch[1]) {
+                setSourceUrl(hostUrlMatch[1].trim());
+                console.log('✅ Found source URL from Zone.Identifier:', hostUrlMatch[1].trim());
+              }
+            }
+          } catch (err) {
+            console.log('ℹ️ Zone.Identifier also not accessible');
+          }
+        }
+      } catch (error) {
+        console.log('ℹ️ Could not read metadata file:', error);
+      }
+    }
+    getSourceUrl();
+  }, [model.modelPath, model.fileName]);
 
   const handleApprove = () => {
     setIsApproving(true);
@@ -316,6 +357,20 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
                 <span className="text-slate-400">Path:</span>
                 <span className="text-white font-mono text-xs truncate max-w-[200px]">{model.modelPath}</span>
               </div>
+              {sourceUrl && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Source:</span>
+                  <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300 font-mono text-xs underline truncate max-w-[200px]"
+                    title={sourceUrl}
+                  >
+                    {sourceUrl.replace('https://', '').replace('http://', '')}
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 

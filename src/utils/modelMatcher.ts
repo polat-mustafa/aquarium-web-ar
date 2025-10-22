@@ -46,13 +46,13 @@ export const MODEL_REGISTRY: ModelDefinition[] = [
     modelPath: '/models/Zebrasoma Xanthurum-fish.glb',
     approved: true  // ✅ Already approved - shows in gallery
   },
-  // Koi Fish - Preview may not work (GLTF format) but you can still approve it
+  // Koi Fish - GLB format (4.8 MB)
   {
-    fileName: 'Koi fish - fish.gltf',
+    fileName: 'Koi fish-fish.glb',
     creatureName: 'Koi Fish',
     category: 'fish',
-    modelPath: '/models/Koi fish - fish.gltf',
-    approved: false  // ⏳ Pending approval - shows in dashboard
+    modelPath: '/models/Koi fish-fish.glb',
+    approved: false  // ⏳ Pending approval - will show in dashboard for testing
   },
 
   // Example: Attach model to existing creature
