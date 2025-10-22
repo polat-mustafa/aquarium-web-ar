@@ -155,7 +155,7 @@ function ARExperienceContent() {
       if (stopQRDetection) stopQRDetection();
       if (streamRef.current) stopCameraStream(streamRef.current);
     };
-  }, [handleQRDetection]);
+  }, []);
 
   // CRITICAL FIX: Load creature from URL ONCE using ref to prevent re-loading
   useEffect(() => {
