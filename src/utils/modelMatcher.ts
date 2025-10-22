@@ -52,7 +52,7 @@ export const MODEL_REGISTRY: ModelDefinition[] = [
     creatureName: 'Koi Fish',
     category: 'fish',
     modelPath: '/models/Koi fish-fish.glb',
-    approved: false  // ⏳ Pending approval - will show in dashboard for testing
+    approved: true  // ✅ Approved - shows in gallery and AR
   },
 
   // Example: Attach model to existing creature
