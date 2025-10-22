@@ -7,7 +7,7 @@ import { OrbitControls, Environment } from '@react-three/drei';
 import { useAppStore } from '@/stores/useAppStore';
 import { CreatureModel } from '@/components/ar/CreatureModel';
 import { LoginForm } from '@/components/dashboard/LoginForm';
-import { MODEL_REGISTRY } from '@/utils/modelMatcher';
+import { MODEL_REGISTRY, getPendingModels, approveModel, type ModelDefinition } from '@/utils/modelMatcher';
 import { galleryCreatures } from '@/utils/galleryData';
 import { isAuthenticated as checkAuth, logout } from '@/utils/auth';
 import type { SeaCreature } from '@/types';
@@ -18,6 +18,102 @@ interface ModelConfig {
   modelPath?: string;
   defaultSize: number;
   category: string;
+}
+
+// Pending Model Card Component
+function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onApprove: () => void }) {
+  const [selectedCategory, setSelectedCategory] = useState(model.category);
+  const [isApproving, setIsApproving] = useState(false);
+
+  const categories = [
+    { value: 'fish', label: 'Fish', emoji: '🐟' },
+    { value: 'mammals', label: 'Marine Mammals', emoji: '🐋' },
+    { value: 'shellfish', label: 'Shellfish', emoji: '🦀' },
+    { value: 'mollusks', label: 'Mollusks', emoji: '🐙' },
+    { value: 'jellyfish', label: 'Jellyfish', emoji: '🪼' },
+    { value: 'reptiles', label: 'Sea Reptiles', emoji: '🐢' },
+    { value: 'baltic', label: 'Baltic Species', emoji: '🌊' },
+  ];
+
+  const handleApprove = () => {
+    setIsApproving(true);
+    approveModel(model.fileName, selectedCategory);
+    setTimeout(() => {
+      setIsApproving(false);
+      onApprove();
+    }, 500);
+  };
+
+  const displayName = model.creatureName || model.fileName.replace(/\.(glb|gltf)$/i, '');
+
+  return (
+    <div className="bg-slate-700/50 rounded-2xl p-6 border-2 border-yellow-500/30 hover:border-yellow-500/60 transition-all">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <h3 className="text-xl font-bold text-white mb-1">{displayName}</h3>
+          <p className="text-xs text-slate-400 font-mono">{model.fileName}</p>
+        </div>
+        <div className="px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded-full">
+          PENDING
+        </div>
+      </div>
+
+      {/* 3D Preview */}
+      <div className="aspect-video bg-gradient-to-br from-slate-900 to-blue-900 rounded-xl mb-4 flex items-center justify-center border border-cyan-500/30">
+        <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
+          <ambientLight intensity={2} />
+          <directionalLight position={[10, 10, 5]} intensity={3} />
+          <pointLight position={[-10, -10, -10]} intensity={2} />
+          <Environment preset="sunset" />
+          <CreatureModel
+            creature={{
+              id: 'preview',
+              name: displayName,
+              type: selectedCategory,
+              modelPath: model.modelPath,
+              scale: 1.5,
+              position: [0, 0, -3],
+              description: displayName,
+              animation: 'idle'
+            }}
+            position={[0, 0, -3]}
+            scale={1.5}
+          />
+          <OrbitControls enablePan={false} enableZoom={true} enableRotate={true} autoRotate={true} autoRotateSpeed={2} />
+        </Canvas>
+      </div>
+
+      {/* Category Selection */}
+      <div className="mb-4">
+        <label className="text-sm text-slate-300 font-semibold mb-2 block">Select Category</label>
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+          className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+        >
+          {categories.map((cat) => (
+            <option key={cat.value} value={cat.value}>
+              {cat.emoji} {cat.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Actions */}
+      <button
+        onClick={handleApprove}
+        disabled={isApproving}
+        className={`w-full py-3 rounded-xl font-bold transition-all ${
+          isApproving
+            ? 'bg-green-600/50 text-white cursor-not-allowed'
+            : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg'
+        }`}
+      >
+        {isApproving ? '✅ Approved!' : '✅ Approve & Add to Gallery'}
+      </button>
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -45,15 +141,29 @@ export default function DashboardPage() {
   const [models, setModels] = useState<ModelConfig[]>([]);
 
   // Active tab
-  const [activeTab, setActiveTab] = useState<'models' | 'settings'>('models');
+  const [activeTab, setActiveTab] = useState<'models' | 'settings' | 'approval'>('approval');
 
   // Settings state
   const [hashtagInput, setHashtagInput] = useState('');
+
+  // Pending models state
+  const [pendingModels, setPendingModels] = useState<ModelDefinition[]>([]);
+  const [selectedPendingModel, setSelectedPendingModel] = useState<ModelDefinition | null>(null);
 
   // Check if already logged in
   useEffect(() => {
     setIsAuthenticated(checkAuth());
   }, []);
+
+  // Load pending models for approval
+  useEffect(() => {
+    if (isAuthenticated) {
+      getPendingModels().then((pending) => {
+        setPendingModels(pending);
+        console.log(`📋 Loaded ${pending.length} pending models for approval`);
+      });
+    }
+  }, [isAuthenticated]);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -214,6 +324,21 @@ export default function DashboardPage() {
             }`}
           >
             ⚙️ App Settings
+          </button>
+          <button
+            onClick={() => setActiveTab('approval')}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all relative ${
+              activeTab === 'approval'
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg'
+                : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            ✅ Pending Approvals
+            {pendingModels.length > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                {pendingModels.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -729,6 +854,53 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Approval Tab */}
+        {activeTab === 'approval' && (
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-3xl font-bold text-white flex items-center">
+                    <span className="text-4xl mr-4">📋</span>
+                    Pending Model Approvals
+                  </h2>
+                  <p className="text-slate-400 mt-2">
+                    Review and approve 3D models before they appear in the gallery
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-4xl font-bold text-cyan-400">{pendingModels.length}</div>
+                  <div className="text-sm text-slate-400">Pending</div>
+                </div>
+              </div>
+
+              {pendingModels.length === 0 ? (
+                <div className="text-center py-20">
+                  <div className="text-8xl mb-6">✅</div>
+                  <h3 className="text-2xl font-bold text-white mb-3">All Caught Up!</h3>
+                  <p className="text-slate-400 text-lg">No pending models to approve right now.</p>
+                  <p className="text-slate-500 text-sm mt-2">
+                    New models will appear here automatically when added to /public/models/
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {pendingModels.map((model) => (
+                    <PendingModelCard
+                      key={model.fileName}
+                      model={model}
+                      onApprove={() => {
+                        // Reload pending models after approval
+                        getPendingModels().then(setPendingModels);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -8,11 +8,14 @@ A production-ready WebAR application for the Aquarium, built with entirely free 
 
 - **🔍 QR Code Detection**: Instant creature spawning via QR code scanning
 - **📱 No App Required**: Works directly in mobile browsers
-- **🎥 Video Recording**: 15-second video capture with social sharing
-- **🐠 Interactive Creatures**: 6 realistic sea creatures with animations
+- **🎥 Video Recording**: Capture AR experience with overlays (speech bubbles, effects)
+- **🔎 Pinch-to-Zoom**: Zoom 3D models from 0.5x to 3x in fullscreen mode
+- **💬 Interactive Speech Bubbles**: Fun cloud-style speech bubbles with educational fish facts
+- **✨ Visual Effects**: Tap screen for bubble animations captured in recordings
+- **🐠 Interactive Creatures**: 3D animated sea creatures with realistic behaviors
 - **♿ Accessibility**: Full screen reader support and keyboard navigation
 - **🌐 Responsive Design**: Optimized for all mobile devices
-- **🚀 High Performance**: Optimized 3D models and efficient rendering
+- **🚀 High Performance**: 70% smaller bundle, efficient canvas rendering
 
 ## 🏗️ Technology Stack
 
@@ -365,6 +368,27 @@ For technical support or questions:
 - **Tailwind CSS**: Utility-first styling
 - **Zustand**: State management
 - **React Three Fiber**: React Three.js integration
+
+## 📋 Version History
+
+### v1.1 (Current)
+**Enhanced Recording & Interaction**
+- ✨ Pinch-to-zoom for 3D models (0.5x - 3x range)
+- 🎨 Video recording with overlay capture (speech bubbles, bubble effects)
+- 📦 70% bundle size reduction (manual canvas drawing vs html2canvas)
+- 🎯 Visual zoom indicator showing percentage
+- 🧹 Cleaner videos (removed instructional text from recordings)
+- ⚡ Better performance with native canvas rendering
+
+### v1.0
+**Initial Stable Release**
+- 🎥 Video recording with AR model capture
+- 💬 Cloud-style speech bubbles with fish facts
+- ✨ Bubble tap effects
+- 🌐 Multi-language support (EN, TR, PL)
+- 📱 Fullscreen AR mode
+- 🎨 Professional UI with gradient design
+- 🐠 3D animated fish models (Tuna, Zebrasoma)
 
 ---
 

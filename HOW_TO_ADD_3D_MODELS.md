@@ -1,15 +1,33 @@
-# 🐠 How to Add 3D Models to Gallery
+# 🐠 How to Add 3D Models to Gallery and AR
 
-## Quick Guide
+## Quick Guide - 3 Easy Steps!
 
-### Step 1: Name Your Model File
+### Step 1: Add Your Model File
 
-Use this format: `{creature-name}-{category}.glb`
+Place your `.glb` or `.gltf` file in `/public/models/`:
+```
+/public/models/your-creature-name.glb
+```
 
-**Examples:**
-- ✅ `clown fish-fish.glb` → "Clown Fish" in Fish category
-- ✅ `blue whale-mammals.glb` → "Blue Whale" in Mammals category
-- ✅ `red crab-shellfish.glb` → "Red Crab" in Shellfish category
+**Supported Formats:**
+- ✅ `.glb` (preferred - single file with everything embedded)
+- ✅ `.gltf` (requires external .bin and texture files)
+
+### Step 2: Register in Model Registry
+
+Open `/src/utils/modelMatcher.ts` and add to `MODEL_REGISTRY` array:
+
+```typescript
+export const MODEL_REGISTRY: ModelDefinition[] = [
+  // Add your new model here:
+  {
+    fileName: 'Koi fish - fish.gltf',
+    creatureName: 'Koi Fish',         // Display name in gallery
+    category: 'fish',                  // Which category to show in
+    modelPath: '/models/Koi fish - fish.gltf'
+  },
+];
+```
 
 **Valid Categories:**
 - `fish` - Fish
@@ -19,92 +37,207 @@ Use this format: `{creature-name}-{category}.glb`
 - `jellyfish` - Jellyfish
 - `reptiles` - Sea Reptiles
 - `baltic` - Baltic Species
-- `custom` - Custom Creatures
 
-### Step 2: Add Model to Folder
+### Step 3: View in Dashboard
 
-Place your `.glb` or `.gltf` file in:
-```
-/public/models/{creature-name}-{category}.glb
-```
-
-**Example:**
-```bash
-# Your files are already here:
-/public/models/clown fish-fish.glb
-/public/models/Zebrasoma Xanthurum-fish.glb
-```
-
-### Step 3: Register the Model
-
-Open `/src/utils/modelScanner.ts` and add your filename to the array:
-
-```typescript
-export const KNOWN_MODEL_FILES = [
-  'clown fish-fish.glb',
-  'Zebrasoma Xanthurum-fish.glb',
-  // Add your new models here 👇
-  'blue whale-mammals.glb',
-  'red crab-shellfish.glb',
-];
-```
-
-### Step 4: Refresh Browser
-
-The model will automatically appear in the correct category in the gallery! 🎉
+1. Save the file
+2. Refresh your browser at `http://localhost:3000/gallery`
+3. Navigate to the category you specified (e.g., "Fish")
+4. Your creature will appear with a green **3D** badge!
+5. Click it to view in AR! 🎉
 
 ---
 
 ## What Happens Automatically
 
-✨ **Creature Name**: Formatted from filename ("clown fish" → "Clown Fish")
-✨ **Category**: Assigned from filename suffix ("fish" → Fish gallery)
+✨ **Gallery Card**: Creature appears in the specified category
+✨ **3D Badge**: Green "3D" badge shows on the creature card
 ✨ **Icon**: Uses category emoji as placeholder (🐟 for fish)
-✨ **Hashtags**: Auto-generated (#ClownFish #3DModel #Aquarium)
-✨ **3D Badge**: Green "3D" badge shown on creature card
+✨ **Hashtags**: Auto-generated (#KoiFish #3DModel #Aquarium #WebAR)
+✨ **AR Page**: Clicking the creature loads the 3D model in AR view
 
 ---
 
-## Current Models
+## Your Current Models
 
-You've already added:
+### ✅ Active Models (showing in gallery):
 
-1. **Clown Fish** (`clown fish-fish.glb`)
+1. **Tuna Fish** (`tuna fish-fish.glb`)
    - Category: Fish 🐟
-   - Size: 8.4 MB
+   - Attached to existing "Tuna" creature
+   - AR URL: `http://localhost:3000/ar?creature=tuna`
 
 2. **Zebrasoma Xanthurum** (`Zebrasoma Xanthurum-fish.glb`)
    - Category: Fish 🐟
-   - Size: 607 KB
+   - Attached to existing "Zebrasoma" creature
+   - AR URL: `http://localhost:3000/ar?creature=zebrasoma`
+
+3. **Koi Fish** (`Koi fish - fish.gltf`) ✨ *Just enabled!*
+   - Category: Fish 🐟
+   - Creates NEW creature in gallery
+   - AR URL: `http://localhost:3000/ar?creature=model-koi-fish`
 
 ---
 
-## Naming Tips
+## Two Ways to Add Models
 
-✅ **Good Names:**
-- `clown fish-fish.glb`
-- `Blue Whale-mammals.glb`
-- `octopus vulgaris-mollusks.glb`
+### Option 1: Create a NEW Creature (Recommended for new species)
 
-❌ **Bad Names:**
-- `clownfish.glb` (missing category)
-- `fish-clown.glb` (category in wrong place)
-- `clown-fish-ocean.glb` (invalid category "ocean")
+**When to use:** You want to add a completely new sea creature to the gallery
+
+**Example - Adding Koi Fish:**
+```typescript
+{
+  fileName: 'Koi fish - fish.gltf',
+  creatureName: 'Koi Fish',      // Creates NEW creature
+  category: 'fish',
+  modelPath: '/models/Koi fish - fish.gltf'
+}
+```
+
+**Result:** A new "Koi Fish" card appears in the Fish category with 3D badge
+
+### Option 2: Attach to EXISTING Creature (Use existing gallery entries)
+
+**When to use:** You have a 3D model for creatures already in the gallery (like Shark, Dolphin, etc.)
+
+**Example - Adding 3D model to existing Tuna:**
+```typescript
+{
+  fileName: 'tuna fish-fish.glb',
+  creatureId: 'tuna',            // Attaches to existing "tuna"
+  category: 'fish',
+  modelPath: '/models/tuna fish-fish.glb'
+}
+```
+
+**Result:** The existing "Tuna" card now shows 3D badge and loads your model
 
 ---
 
 ## Troubleshooting
 
-**Model not showing?**
-1. Check filename format: `{name}-{category}.glb`
-2. Verify category is valid (see list above)
-3. Make sure it's added to `KNOWN_MODEL_FILES` array
-4. Refresh browser (Ctrl+Shift+R / Cmd+Shift+R)
-5. Check browser console for errors
+### Model not showing in gallery?
 
-**Check browser console:**
+1. **Check registration:**
+   - Open `/src/utils/modelMatcher.ts`
+   - Verify your model is in the `MODEL_REGISTRY` array
+   - Make sure it's NOT commented out with `//`
+
+2. **Check file exists:**
+   - File must be in `/public/models/` folder
+   - Path in `modelPath` must match actual filename exactly
+
+3. **Refresh browser:**
+   - Hard refresh: `Ctrl+Shift+R` (Windows) or `Cmd+Shift+R` (Mac)
+   - Clear cache if needed
+
+4. **Check browser console** (Press F12):
 ```
-✅ Loaded model: Clown Fish (fish)
-✅ Loaded model: Zebrasoma Xanthurum (fish)
-✅ Loaded 2 model creatures from /public/models/
+✅ Created model creature: { id: 'model-koi-fish', name: 'Koi Fish', hasModel: true }
+✅ Attached model to Tuna: /models/tuna fish-fish.glb
 ```
+
+### Model showing but not loading in AR?
+
+1. **Check file format:**
+   - `.glb` files work best (single file)
+   - `.gltf` files need accompanying `.bin` and texture files
+
+2. **Check file size:**
+   - Large files (>10MB) may take time to load
+   - Optimize models for web use
+
+3. **Check browser console for errors:**
+```
+❌ Error loading model: /models/Koi fish - fish.gltf
+   - Check if .bin file exists
+   - Check if textures are included
+```
+
+### Common Issues:
+
+**Issue: "Model not found"**
+- Solution: Check `modelPath` matches exact filename including spaces and case
+
+**Issue: "GLTF model not loading"**
+- Solution: GLTF format requires external files (.bin, textures). Use GLB instead or ensure all files are present.
+
+**Issue: "3D badge not showing"**
+- Solution: Model must be registered with either `creatureName` or `creatureId` in MODEL_REGISTRY
+
+---
+
+## Complete Example: Adding a New Model
+
+Let's walk through adding a **Blue Whale** model step by step:
+
+### Step 1: Get Your Model File
+- Download or create `blue-whale.glb`
+- Place it in: `C:\Users\stary\Desktop\aquarium\public\models\blue-whale.glb`
+
+### Step 2: Register in modelMatcher.ts
+Open `C:\Users\stary\Desktop\aquarium\src\utils\modelMatcher.ts`:
+
+```typescript
+export const MODEL_REGISTRY: ModelDefinition[] = [
+  // ... existing models ...
+
+  // Add your Blue Whale
+  {
+    fileName: 'blue-whale.glb',
+    creatureName: 'Blue Whale',
+    category: 'mammals',
+    modelPath: '/models/blue-whale.glb'
+  },
+];
+```
+
+### Step 3: Test It!
+1. Save the file
+2. Go to `http://localhost:3000/gallery`
+3. Click on "Marine Mammals" category
+4. You'll see "Blue Whale" with a green 3D badge
+5. Click it to view in AR!
+
+---
+
+## Quick Reference
+
+### File Locations:
+- **Models folder:** `/public/models/`
+- **Registry file:** `/src/utils/modelMatcher.ts`
+- **Gallery page:** `http://localhost:3000/gallery`
+
+### Categories:
+| Category | Gallery Section |
+|----------|----------------|
+| `fish` | Fish |
+| `mammals` | Marine Mammals |
+| `shellfish` | Shellfish |
+| `mollusks` | Mollusks |
+| `jellyfish` | Jellyfish |
+| `reptiles` | Sea Reptiles |
+| `baltic` | Baltic Species |
+
+### Existing Creatures (for attaching models):
+`shark`, `angelfish`, `tuna`, `zebrasoma`, `whale`, `dolphin`, `seal`, `crab`, `lobster`, `shrimp`, `octopus`, `squid`, `jellyfish`, `medusa`, `turtle`, `sea-snake`, `herring`, `cod`, `flounder`, `baltic-seal`
+
+---
+
+## Next Steps
+
+Your **Koi Fish** model is now enabled! 🎉
+
+**To test:**
+1. Run `npm run dev` if not already running
+2. Open `http://localhost:3000/gallery`
+3. Click "Fish" category
+4. Find "Koi Fish" with the 3D badge
+5. Click to view in AR!
+
+**To add more models:**
+1. Add `.glb` file to `/public/models/`
+2. Register in `/src/utils/modelMatcher.ts`
+3. Refresh browser
+4. Done!
