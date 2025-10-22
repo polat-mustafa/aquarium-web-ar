@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { ARViewer } from '@/components/ar/ARViewer';
-import { RecordButton } from '@/components/ui/RecordButton';
 import { SharePanel } from '@/components/ui/SharePanel';
+import { SpeechBubble } from '@/components/ui/SpeechBubble';
 import { useAppStore } from '@/stores/useAppStore';
 import { initializeQRDetection, createCameraStream, stopCameraStream } from '@/utils/qrDetection';
 import type { QRDetectionResult } from '@/utils/qrDetection';
 import { hideGlobalLoading } from '@/components/ui/LoadingOverlay';
+import { videoService } from '@/services/VideoRecordingService';
+import { getRandomFishFact } from '@/utils/fishFacts';
 
 function ZebrasomaARContent() {
   // Set body data-page attribute for AR-specific styles
@@ -29,9 +31,15 @@ function ZebrasomaARContent() {
   const [showSharePanel, setShowSharePanel] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [showRecordingPopup, setShowRecordingPopup] = useState(true);
   const [showSocialSection, setShowSocialSection] = useState(false);
   const [showCreaturePopup, setShowCreaturePopup] = useState(true);
+  const [isRecordingLocal, setIsRecordingLocal] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingInitializedRef = useRef(false);
+  const [showSpeechBubble, setShowSpeechBubble] = useState(false);
+  const [currentFact, setCurrentFact] = useState('');
+  const [preferredLanguage, setPreferredLanguage] = useState<'en' | 'tr'>('en');
 
   const {
     activeCreature,

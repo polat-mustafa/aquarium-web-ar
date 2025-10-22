@@ -72,11 +72,6 @@ function ARExperienceContent() {
     };
   }, []);
 
-  // Debug: Log camera ready state
-  useEffect(() => {
-    console.log('📹 Camera Ready State:', isCameraReady);
-    console.log('📹 Camera Error:', cameraError);
-  }, [isCameraReady, cameraError]);
 
   // Initialize AR from store (once) - ONLY on first mount
   useEffect(() => {
@@ -96,18 +91,15 @@ function ARExperienceContent() {
 
     const initializeCamera = async () => {
       try {
-        console.log('🎥 Requesting camera access...');
         const stream = await createCameraStream();
 
         if (!mounted) return;
 
         streamRef.current = stream;
-        console.log('✅ Camera stream obtained');
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
 
-          console.log('⏳ Waiting for video metadata...');
           // Wait for video metadata to load
           await new Promise<void>((resolve, reject) => {
             if (!videoRef.current) {
@@ -119,20 +111,16 @@ function ARExperienceContent() {
 
             videoRef.current.onloadedmetadata = () => {
               clearTimeout(timeout);
-              console.log('✅ Video metadata loaded');
               resolve();
             };
           });
 
           if (!mounted) return;
 
-          console.log('▶️ Playing video...');
           await videoRef.current.play();
-          console.log('✅ Video playing');
 
           setCameraError(null);
           setIsCameraReady(true);
-          console.log('✅ Camera ready state set to TRUE');
 
           // Initialize QR detection
           stopQRDetection = initializeQRDetection(
@@ -141,7 +129,7 @@ function ARExperienceContent() {
           );
         }
       } catch (error) {
-        console.error('❌ Camera initialization failed:', error);
+        console.error('Camera initialization failed:', error);
         if (mounted) {
           setCameraError('Camera access denied. Please allow camera permissions and refresh.');
         }
@@ -307,23 +295,23 @@ function ARExperienceContent() {
     if (isCameraReady && videoRef.current && !recordingInitializedRef.current) {
       videoService.recording.initialize(videoRef.current)
         .then(() => {
-          console.log('✅ Video recording service initialized');
           recordingInitializedRef.current = true;
 
           // Setup callbacks
           videoService.recording.onData((blob) => {
-            console.log('📹 Video recorded:', blob.size, 'bytes');
+            // Store blob in service for SharePanel to access
+            videoService.blob.store(blob);
             setRecordedVideo(blob);
             setShowSharePanel(true);
           });
 
           videoService.recording.onError((error) => {
-            console.error('❌ Recording error:', error);
+            console.error('Recording error:', error);
             alert('Video recording failed: ' + error.message);
           });
         })
         .catch((error) => {
-          console.error('❌ Failed to initialize recording:', error);
+          console.error('Failed to initialize recording:', error);
         });
     }
 
@@ -339,7 +327,6 @@ function ARExperienceContent() {
   const startRecording = useCallback(async () => {
     try {
       if (!recordingInitializedRef.current) {
-        console.error('❌ Recording service not initialized');
         return;
       }
 
@@ -351,8 +338,6 @@ function ARExperienceContent() {
       recordingIntervalRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
-
-      console.log('🎬 Recording started');
     } catch (error) {
       console.error('Failed to start recording:', error);
       alert('Failed to start recording: ' + (error as Error).message);
@@ -370,8 +355,6 @@ function ARExperienceContent() {
         recordingIntervalRef.current = null;
       }
       setRecordingTime(0);
-
-      console.log('⏹️ Recording stopped');
     } catch (error) {
       console.error('Failed to stop recording:', error);
     }
