@@ -34,6 +34,8 @@ function ARExperienceContent() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const recordingInitializedRef = useRef(false);
   const [showDelayedTouchIndicator, setShowDelayedTouchIndicator] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     activeCreature,
@@ -312,6 +314,13 @@ function ARExperienceContent() {
 
       videoService.recording.start();
       setIsRecording(true);
+      setRecordingTime(0);
+
+      // Start timer
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+
       console.log('🎬 Recording started');
     } catch (error) {
       console.error('Failed to start recording:', error);
@@ -323,6 +332,14 @@ function ARExperienceContent() {
     try {
       videoService.recording.stop();
       setIsRecording(false);
+
+      // Stop timer
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+      setRecordingTime(0);
+
       console.log('⏹️ Recording stopped');
     } catch (error) {
       console.error('Failed to stop recording:', error);
@@ -385,6 +402,19 @@ function ARExperienceContent() {
         muted
         style={{ transform: 'scaleX(-1)' }}
       />
+
+      {/* Recording Timer - Show when recording */}
+      {isRecording && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
+          <div className="bg-red-500 text-white px-6 py-2 rounded-full flex items-center space-x-2 shadow-2xl animate-pulse">
+            <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+            <span className="font-mono font-bold text-lg">
+              {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:
+              {(recordingTime % 60).toString().padStart(2, '0')}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* AR Content Overlay - Render Three.js model viewer - Always visible */}
       <div
@@ -480,19 +510,17 @@ function ARExperienceContent() {
                   startRecording();
                 }
               }}
-              className={`relative w-20 h-20 rounded-full flex items-center justify-center shadow-2xl border-4 border-white transition-all hover:scale-110 active:scale-95 ${
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95 ${
                 isRecording
-                  ? 'bg-red-500 animate-pulse'
-                  : 'bg-white'
+                  ? 'bg-gradient-to-br from-red-500 to-red-600 animate-pulse'
+                  : 'bg-gradient-to-br from-red-500 to-red-600'
               }`}
               aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
             >
               {isRecording ? (
-                <div className="w-8 h-8 bg-white rounded-sm" />
+                <div className="w-5 h-5 bg-white rounded-sm" />
               ) : (
-                <div className="w-16 h-16 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
-                  <span className="text-[10px] font-extrabold text-white tracking-wider">REC</span>
-                </div>
+                <div className="w-3 h-3 bg-white rounded-full" />
               )}
             </button>
 

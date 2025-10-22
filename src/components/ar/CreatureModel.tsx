@@ -95,8 +95,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
     loader.load(
       encodedPath,
       (gltf) => {
-        console.log('✅ Model loaded:', creature.name, 'Animations:', gltf.animations.length);
-
         const loadedScene = gltf.scene.clone(true);
 
         // Make everything visible
@@ -133,7 +131,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
 
         if (maxDim > 0) {
           scaleNormalizationRef.current = TARGET_SIZE / maxDim;
-          console.log('📏 Model size:', size, 'Max dim:', maxDim, 'Scale factor:', scaleNormalizationRef.current);
         } else {
           scaleNormalizationRef.current = 1;
         }
@@ -176,7 +173,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
   // Handle tap/click on creature
   const handleTap = useCallback(() => {
     if (!isTurning) {
-      console.log('🐟 Fish tapped!', creature.name);
       setIsTurning(true);
       turnAnimationRef.current = {
         progress: 0,
@@ -184,7 +180,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
       };
 
       // Show speech bubble
-      console.log('💬 Setting speech bubble to true');
       setShowSpeechBubble(true);
 
       // Generate new random position within reasonable bounds
