@@ -27,7 +27,7 @@ function ARExperienceContent() {
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showCreaturePopup, setShowCreaturePopup] = useState(false);
-  const [bubbles, setBubbles] = useState<Array<{ id: number; x: number; y: number }>>([]);
+  const [bubbles, setBubbles] = useState<Array<{ id: number; x: number; y: number; opacity: number }>>([]);
   const [showSharePanel, setShowSharePanel] = useState(false);
   const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -252,19 +252,38 @@ function ARExperienceContent() {
     const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
     const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
 
-    // Create multiple small bubbles
+    // Create multiple small bubbles with initial opacity
     const newBubbles = Array.from({ length: 5 }, (_, i) => ({
       id: Date.now() + i,
       x: x + (Math.random() - 0.5) * 40,
       y: y + (Math.random() - 0.5) * 40,
+      opacity: 1,
     }));
 
     setBubbles(prev => [...prev, ...newBubbles]);
 
-    // Remove bubbles after animation
-    setTimeout(() => {
-      setBubbles(prev => prev.filter(b => !newBubbles.find(nb => nb.id === b.id)));
-    }, 1000);
+    // Animate bubble opacity
+    const startTime = Date.now();
+    const animationDuration = 1000;
+    const animationInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = elapsed / animationDuration;
+
+      if (progress >= 1) {
+        clearInterval(animationInterval);
+        setBubbles(prev => prev.filter(b => !newBubbles.find(nb => nb.id === b.id)));
+      } else {
+        setBubbles(prev =>
+          prev.map(b => {
+            const newBubble = newBubbles.find(nb => nb.id === b.id);
+            if (newBubble) {
+              return { ...b, opacity: 1 - progress };
+            }
+            return b;
+          })
+        );
+      }
+    }, 16); // ~60fps
   }, []);
 
   // Handle pinch zoom
@@ -422,6 +441,27 @@ function ARExperienceContent() {
       setShowDelayedTouchIndicator(false);
     }
   }, [activeCreature, showTouchIndicator]);
+
+  // Update video recording with overlay data
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const overlayData = {
+      bubbles: bubbles,
+      speechBubble: enableSpeechBubbles && showSpeechBubble && currentFact ? {
+        text: currentFact[preferredLanguage],
+        x: window.innerWidth / 2,
+        y: window.innerHeight * 0.15,
+      } : undefined,
+      touchIndicator: activeCreature && showDelayedTouchIndicator ? {
+        text: 'Tap Fish',
+        x: window.innerWidth / 2,
+        y: window.innerHeight - 160,
+      } : undefined,
+    };
+
+    videoService.recording.updateOverlayData(overlayData);
+  }, [isRecording, bubbles, showSpeechBubble, currentFact, preferredLanguage, enableSpeechBubbles, activeCreature, showDelayedTouchIndicator]);
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 relative">

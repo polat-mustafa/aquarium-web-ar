@@ -3,7 +3,19 @@
  * Singleton service for managing video recording lifecycle
  */
 
-import html2canvas from 'html2canvas';
+export interface OverlayData {
+  bubbles: Array<{ id: number; x: number; y: number; opacity: number }>;
+  speechBubble?: {
+    text: string;
+    x: number;
+    y: number;
+  };
+  touchIndicator?: {
+    text: string;
+    x: number;
+    y: number;
+  };
+}
 
 export class RecordingManager {
   private mediaRecorder: MediaRecorder | null = null;
@@ -17,10 +29,8 @@ export class RecordingManager {
   private animationFrameId: number | null = null;
   private videoElement: HTMLVideoElement | null = null;
   private webglCanvasWarned: boolean = false;
-  private overlayCanvas: HTMLCanvasElement | null = null;
+  private overlayData: OverlayData = { bubbles: [] };
   private frameCount: number = 0;
-  private overlayUpdateInterval: number = 1; // Update overlay every frame for accurate capture
-  private isCapturingOverlay: boolean = false;
 
   constructor() {
     console.log('📹 RecordingManager initialized');
@@ -122,58 +132,214 @@ export class RecordingManager {
   }
 
   /**
-   * Capture overlay elements (speech bubbles, effects) using html2canvas
+   * Update overlay data from AR page
    */
-  private async captureOverlay(): Promise<void> {
-    // Prevent multiple simultaneous captures
-    if (this.isCapturingOverlay) return;
+  updateOverlayData(data: OverlayData): void {
+    this.overlayData = data;
+  }
 
-    // Find all overlay elements we want to capture
-    const overlayContainer = document.getElementById('ar-overlay-content');
-    if (!overlayContainer) {
-      return;
+  /**
+   * Draw overlay elements directly onto canvas
+   */
+  private drawOverlays(ctx: CanvasRenderingContext2D): void {
+    if (!this.overlayData) return;
+
+    // Draw bubbles
+    this.overlayData.bubbles.forEach(bubble => {
+      const radius = 8;
+
+      // Create gradient for bubble
+      const gradient = ctx.createRadialGradient(
+        bubble.x, bubble.y, 0,
+        bubble.x, bubble.y, radius
+      );
+      gradient.addColorStop(0, `rgba(34, 211, 238, ${bubble.opacity * 0.6})`);
+      gradient.addColorStop(0.5, `rgba(34, 211, 238, ${bubble.opacity * 0.4})`);
+      gradient.addColorStop(1, `rgba(34, 211, 238, 0)`);
+
+      // Draw bubble circle
+      ctx.save();
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(bubble.x, bubble.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw bubble border
+      ctx.strokeStyle = `rgba(103, 232, 249, ${bubble.opacity * 0.8})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(bubble.x, bubble.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Draw speech bubble
+    if (this.overlayData.speechBubble) {
+      const { text, x, y } = this.overlayData.speechBubble;
+      this.drawSpeechBubble(ctx, text, x, y);
     }
 
-    this.isCapturingOverlay = true;
-
-    try {
-      // Create a temporary canvas if needed
-      if (!this.overlayCanvas) {
-        this.overlayCanvas = document.createElement('canvas');
-        this.overlayCanvas.width = this.canvas?.width || window.innerWidth;
-        this.overlayCanvas.height = this.canvas?.height || window.innerHeight;
-        console.log('🎨 Overlay canvas created:', this.overlayCanvas.width, 'x', this.overlayCanvas.height);
-      }
-
-      const canvas = await html2canvas(overlayContainer, {
-        backgroundColor: null, // Transparent background
-        logging: false,
-        width: this.overlayCanvas.width,
-        height: this.overlayCanvas.height,
-        windowWidth: window.innerWidth,
-        windowHeight: window.innerHeight,
-        scale: 0.5, // Reduce quality for performance
-        useCORS: true,
-        allowTaint: true,
-        foreignObjectRendering: false, // Disable for better compatibility
-        removeContainer: false,
-        ignoreElements: (element) => {
-          // Skip WebGL canvas to avoid duplicate rendering
-          return element.tagName === 'CANVAS';
-        }
-      });
-
-      // Copy to our overlay canvas
-      const ctx = this.overlayCanvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
-        ctx.drawImage(canvas, 0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
-      }
-    } catch (error) {
-      console.error('❌ Failed to capture overlay:', error);
-    } finally {
-      this.isCapturingOverlay = false;
+    // Draw touch indicator
+    if (this.overlayData.touchIndicator) {
+      const { text, x, y } = this.overlayData.touchIndicator;
+      this.drawTouchIndicator(ctx, text, x, y);
     }
+  }
+
+  /**
+   * Draw a fun cloud-style speech bubble
+   */
+  private drawSpeechBubble(ctx: CanvasRenderingContext2D, text: string, x: number, y: number): void {
+    const maxWidth = 280;
+    const padding = 24;
+
+    ctx.save();
+
+    // Measure text
+    ctx.font = 'bold 18px "Comic Sans MS", cursive';
+    const lines = this.wrapText(ctx, text, maxWidth - padding * 2);
+    const lineHeight = 28;
+    const textHeight = lines.length * lineHeight;
+    const bubbleWidth = maxWidth;
+    const bubbleHeight = textHeight + padding * 2;
+
+    // Position at top-center
+    const bubbleX = x - bubbleWidth / 2;
+    const bubbleY = y;
+
+    // Draw main cloud body (white rounded rectangle)
+    ctx.fillStyle = 'white';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 10;
+    this.roundRect(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, 60);
+    ctx.fill();
+
+    // Draw cloud bumps (circles on top and sides)
+    ctx.shadowBlur = 15;
+
+    // Top bumps
+    ctx.beginPath();
+    ctx.arc(bubbleX + bubbleWidth * 0.25, bubbleY - 20, 32, 0, Math.PI * 2);
+    ctx.arc(bubbleX + bubbleWidth * 0.45, bubbleY - 32, 40, 0, Math.PI * 2);
+    ctx.arc(bubbleX + bubbleWidth * 0.75, bubbleY - 20, 28, 0, Math.PI * 2);
+    // Side bumps
+    ctx.arc(bubbleX - 16, bubbleY + bubbleHeight * 0.2, 24, 0, Math.PI * 2);
+    ctx.arc(bubbleX + bubbleWidth + 16, bubbleY + bubbleHeight * 0.2, 24, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw speech tail (3 circles)
+    const tailX = bubbleX + bubbleWidth * 0.2;
+    const tailY = bubbleY + bubbleHeight;
+    ctx.beginPath();
+    ctx.arc(tailX + 8, tailY - 8, 16, 0, Math.PI * 2);
+    ctx.arc(tailX + 16, tailY + 2, 10, 0, Math.PI * 2);
+    ctx.arc(tailX + 24, tailY + 8, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Reset shadow for text
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
+    // Draw gradient text
+    const gradient = ctx.createLinearGradient(bubbleX, bubbleY, bubbleX + bubbleWidth, bubbleY);
+    gradient.addColorStop(0, '#2563eb');    // blue-600
+    gradient.addColorStop(0.5, '#9333ea');  // purple-600
+    gradient.addColorStop(1, '#db2777');    // pink-600
+
+    ctx.fillStyle = gradient;
+    ctx.font = 'bold 18px "Comic Sans MS", cursive';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Draw text lines
+    lines.forEach((line, i) => {
+      ctx.fillText(
+        line,
+        bubbleX + bubbleWidth / 2,
+        bubbleY + padding + lineHeight / 2 + i * lineHeight
+      );
+    });
+
+    // Draw sparkles
+    ctx.font = '20px serif';
+    ctx.fillText('✨', bubbleX - 8, bubbleY - 8);
+    ctx.fillText('⭐', bubbleX + bubbleWidth + 8, bubbleY - 12);
+    ctx.fillText('💫', bubbleX + 12, bubbleY + bubbleHeight - 8);
+
+    ctx.restore();
+  }
+
+  /**
+   * Draw touch indicator
+   */
+  private drawTouchIndicator(ctx: CanvasRenderingContext2D, text: string, x: number, y: number): void {
+    ctx.save();
+
+    // Background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+    ctx.shadowBlur = 8;
+    this.roundRect(ctx, x - 60, y - 20, 120, 40, 20);
+    ctx.fill();
+
+    // Emoji
+    ctx.shadowBlur = 0;
+    ctx.font = '20px serif';
+    ctx.fillText('👆', x - 30, y);
+
+    // Text
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = '14px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x - 5, y);
+
+    ctx.restore();
+  }
+
+  /**
+   * Helper to draw rounded rectangle
+   */
+  private roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+
+  /**
+   * Wrap text to fit within maxWidth
+   */
+  private wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    words.forEach(word => {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word;
+      const metrics = ctx.measureText(testLine);
+
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    });
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    return lines;
   }
 
   /**
@@ -199,8 +365,8 @@ export class RecordingManager {
     const allCanvases = document.querySelectorAll('canvas');
 
     for (const canvas of allCanvases) {
-      // Skip our compositing canvas and overlay canvas
-      if (canvas === this.canvas || canvas === this.overlayCanvas) continue;
+      // Skip our compositing canvas
+      if (canvas === this.canvas) continue;
 
       // Look for Three.js canvas - it should be the largest canvas that's not ours
       // and should have reasonable dimensions
@@ -236,19 +402,8 @@ export class RecordingManager {
       }
     }
 
-    // Update overlay capture every N frames for performance
-    if (this.frameCount % this.overlayUpdateInterval === 0) {
-      this.captureOverlay(); // Async, but we use the previous frame's overlay
-    }
-
-    // Draw cached overlay on top if available
-    if (this.overlayCanvas) {
-      try {
-        this.ctx.drawImage(this.overlayCanvas, 0, 0, this.canvas.width, this.canvas.height);
-      } catch (error) {
-        console.error('❌ Failed to draw overlay:', error);
-      }
-    }
+    // Draw overlays (bubbles, speech bubble, etc.) directly onto canvas
+    this.drawOverlays(this.ctx);
 
     // Continue animation loop
     if (this.animationFrameId !== null) {
@@ -276,8 +431,7 @@ export class RecordingManager {
     // Reset warning flag and frame counter
     this.webglCanvasWarned = false;
     this.frameCount = 0;
-    this.overlayCanvas = null;
-    this.isCapturingOverlay = false;
+    this.overlayData = { bubbles: [] };
 
     // Start compositing frames
     this.animationFrameId = requestAnimationFrame(() => this.compositeFrame());
@@ -367,9 +521,8 @@ export class RecordingManager {
     this.chunks = [];
     this.canvas = null;
     this.ctx = null;
-    this.overlayCanvas = null;
+    this.overlayData = { bubbles: [] };
     this.frameCount = 0;
-    this.isCapturingOverlay = false;
     console.log('🧹 RecordingManager cleaned up');
   }
 }
