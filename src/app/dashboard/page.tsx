@@ -494,13 +494,23 @@ export default function DashboardPage() {
     setIsAuthenticated(false);
   };
 
-  // Load all available models
+  // Load all available models (APPROVED ONLY)
   useEffect(() => {
     const availableModels: ModelConfig[] = [];
 
-    // Add models from registry
+    // Helper function to check if approved
+    const isApproved = (registryItem: any) => {
+      if (registryItem.approved === true) return true;
+      if (typeof window !== 'undefined') {
+        const approvals = JSON.parse(localStorage.getItem('model_approvals') || '{}');
+        return approvals[registryItem.fileName] === true;
+      }
+      return false;
+    };
+
+    // Add APPROVED models from registry that create new creatures
     MODEL_REGISTRY.forEach((registryItem) => {
-      if (registryItem.modelPath && registryItem.creatureName) {
+      if (registryItem.modelPath && registryItem.creatureName && isApproved(registryItem)) {
         availableModels.push({
           id: `model-${registryItem.creatureName.toLowerCase().replace(/\s+/g, '-')}`,
           name: registryItem.creatureName,
@@ -508,13 +518,16 @@ export default function DashboardPage() {
           defaultSize: 1.5,
           category: registryItem.category || 'fish'
         });
+        console.log('✅ Added approved model:', registryItem.creatureName);
+      } else if (registryItem.modelPath && registryItem.creatureName && !isApproved(registryItem)) {
+        console.log('⏭️ Skipping unapproved model:', registryItem.creatureName);
       }
     });
 
-    // Add gallery creatures
+    // Add APPROVED gallery creatures with models
     galleryCreatures.forEach((creature) => {
       const registryMatch = MODEL_REGISTRY.find(r => r.creatureId === creature.id);
-      if (registryMatch?.modelPath) {
+      if (registryMatch?.modelPath && isApproved(registryMatch)) {
         const existing = availableModels.find(m => m.id === creature.id);
         if (!existing) {
           availableModels.push({
@@ -524,10 +537,12 @@ export default function DashboardPage() {
             defaultSize: 1.5,
             category: (creature as any).category || 'fish'
           });
+          console.log('✅ Added approved gallery creature:', creature.name);
         }
       }
     });
 
+    console.log(`📊 Total approved models loaded: ${availableModels.length}`);
     setModels(availableModels);
     if (availableModels.length > 0) {
       setSelectedModel(availableModels[0]);
@@ -676,27 +691,44 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar">
-                  {models.map((model) => (
-                    <button
-                      key={model.id}
-                      onClick={() => handleModelSelect(model)}
-                      className={`w-full text-left p-4 rounded-xl transition-all ${
-                        selectedModel?.id === model.id
-                          ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg scale-105'
-                          : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold">{model.name}</div>
-                          <div className="text-xs opacity-70 mt-1">
-                            Size: {(modelSizeSettings[model.id] || model.defaultSize).toFixed(1)}x ({Math.round((modelSizeSettings[model.id] || model.defaultSize) * 100)}cm)
+                  {models.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-5xl mb-4">📋</div>
+                      <h3 className="text-white font-bold mb-2">No Approved Models</h3>
+                      <p className="text-slate-400 text-sm mb-4">
+                        Approve models in the "Pending Approvals" tab first
+                      </p>
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setActiveTab('approval')}
+                        className="inline-block px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm transition-all"
+                      >
+                        Go to Pending Approvals
+                      </Link>
+                    </div>
+                  ) : (
+                    models.map((model) => (
+                      <button
+                        key={model.id}
+                        onClick={() => handleModelSelect(model)}
+                        className={`w-full text-left p-4 rounded-xl transition-all ${
+                          selectedModel?.id === model.id
+                            ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg scale-105'
+                            : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold">{model.name}</div>
+                            <div className="text-xs opacity-70 mt-1">
+                              Size: {(modelSizeSettings[model.id] || model.defaultSize).toFixed(1)}x ({Math.round((modelSizeSettings[model.id] || model.defaultSize) * 100)}cm)
+                            </div>
                           </div>
+                          <div className="text-2xl">🐟</div>
                         </div>
-                        <div className="text-2xl">🐟</div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    ))
+                  )}
                 </div>
 
                 <button
