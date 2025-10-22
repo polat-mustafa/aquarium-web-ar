@@ -36,6 +36,8 @@ function ARExperienceContent() {
   const [showDelayedTouchIndicator, setShowDelayedTouchIndicator] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [showZoomIndicator, setShowZoomIndicator] = useState(false);
+  const zoomIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     activeCreature,
@@ -278,8 +280,24 @@ function ARExperienceContent() {
 
       if (lastPinchDistance.current !== null) {
         const delta = distance - lastPinchDistance.current;
-        const zoomDelta = delta * 0.01;
-        setZoomLevel(zoomLevel + zoomDelta);
+        // Increased sensitivity: 0.015 instead of 0.01 for better control
+        const zoomDelta = delta * 0.015;
+        const newZoom = zoomLevel + zoomDelta;
+        // Clamp between 0.5 and 3
+        setZoomLevel(Math.max(0.5, Math.min(3, newZoom)));
+
+        // Show zoom indicator
+        setShowZoomIndicator(true);
+
+        // Clear existing timeout
+        if (zoomIndicatorTimeoutRef.current) {
+          clearTimeout(zoomIndicatorTimeoutRef.current);
+        }
+
+        // Hide indicator after 1 second of no zooming
+        zoomIndicatorTimeoutRef.current = setTimeout(() => {
+          setShowZoomIndicator(false);
+        }, 1000);
       }
 
       lastPinchDistance.current = distance;
@@ -425,6 +443,18 @@ function ARExperienceContent() {
             <span className="font-mono font-bold text-lg">
               {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:
               {(recordingTime % 60).toString().padStart(2, '0')}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Zoom Indicator - Show when pinch zooming */}
+      {showZoomIndicator && (
+        <div className="fixed top-20 right-6 z-50 pointer-events-none">
+          <div className="bg-black/60 backdrop-blur-md text-white px-4 py-2 rounded-full flex items-center space-x-2 shadow-xl border border-white/20">
+            <span className="text-2xl">🔍</span>
+            <span className="font-bold text-base">
+              {Math.round(zoomLevel * 100)}%
             </span>
           </div>
         </div>
