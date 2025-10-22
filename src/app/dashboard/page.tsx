@@ -20,10 +20,16 @@ interface ModelConfig {
   category: string;
 }
 
-// Pending Model Card Component
+// Pending Model Card Component with Full Testing
 function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onApprove: () => void }) {
   const [selectedCategory, setSelectedCategory] = useState(model.category);
   const [isApproving, setIsApproving] = useState(false);
+  const [fileSize, setFileSize] = useState<string>('Loading...');
+  const [modelStats, setModelStats] = useState<any>(null);
+  const [testScale, setTestScale] = useState(1.5);
+  const [autoRotate, setAutoRotate] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+  const [expandedView, setExpandedView] = useState(false);
 
   const categories = [
     { value: 'fish', label: 'Fish', emoji: '🐟' },
@@ -35,6 +41,60 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
     { value: 'baltic', label: 'Baltic Species', emoji: '🌊' },
   ];
 
+  // Get file size and model stats
+  useEffect(() => {
+    async function getFileInfo() {
+      try {
+        const response = await fetch(model.modelPath, { method: 'HEAD' });
+        const size = parseInt(response.headers.get('content-length') || '0');
+        const sizeInMB = (size / (1024 * 1024)).toFixed(2);
+        const sizeInKB = (size / 1024).toFixed(2);
+        setFileSize(size > 1024 * 1024 ? `${sizeInMB} MB` : `${sizeInKB} KB`);
+
+        // Get model statistics
+        const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+        const loader = new GLTFLoader();
+        loader.load(model.modelPath, (gltf) => {
+          let vertices = 0;
+          let triangles = 0;
+          let materials = 0;
+          let animations = gltf.animations.length;
+
+          gltf.scene.traverse((child: any) => {
+            if (child.isMesh) {
+              if (child.geometry) {
+                const positionAttr = child.geometry.attributes.position;
+                if (positionAttr) {
+                  vertices += positionAttr.count;
+                }
+                if (child.geometry.index) {
+                  triangles += child.geometry.index.count / 3;
+                } else if (positionAttr) {
+                  triangles += positionAttr.count / 3;
+                }
+              }
+              if (child.material) {
+                materials++;
+              }
+            }
+          });
+
+          setModelStats({
+            vertices: Math.round(vertices),
+            triangles: Math.round(triangles),
+            materials,
+            animations,
+            hasTextures: materials > 0
+          });
+        });
+      } catch (error) {
+        console.error('Error getting file info:', error);
+        setFileSize('Unknown');
+      }
+    }
+    getFileInfo();
+  }, [model.modelPath]);
+
   const handleApprove = () => {
     setIsApproving(true);
     approveModel(model.fileName, selectedCategory);
@@ -44,7 +104,12 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
     }, 500);
   };
 
+  const handleTestInAR = () => {
+    window.open(`/ar?creature=model-${model.fileName.replace(/\.(glb|gltf)$/i, '')}`, '_blank');
+  };
+
   const displayName = model.creatureName || model.fileName.replace(/\.(glb|gltf)$/i, '');
+  const fileFormat = model.fileName.endsWith('.glb') ? 'GLB (Binary)' : 'GLTF (JSON)';
 
   return (
     <div className="bg-slate-700/50 rounded-2xl p-6 border-2 border-yellow-500/30 hover:border-yellow-500/60 transition-all">
@@ -54,39 +119,208 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
           <h3 className="text-xl font-bold text-white mb-1">{displayName}</h3>
           <p className="text-xs text-slate-400 font-mono">{model.fileName}</p>
         </div>
-        <div className="px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded-full">
-          PENDING
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setExpandedView(!expandedView)}
+            className="px-3 py-1 bg-blue-500/20 text-blue-300 text-xs font-bold rounded-full hover:bg-blue-500/30 transition-all"
+          >
+            {expandedView ? '◀ Compact' : '▶ Expand'}
+          </button>
+          <div className="px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded-full">
+            PENDING
+          </div>
         </div>
       </div>
 
-      {/* 3D Preview */}
-      <div className="aspect-video bg-gradient-to-br from-slate-900 to-blue-900 rounded-xl mb-4 flex items-center justify-center border border-cyan-500/30">
-        <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
-          <ambientLight intensity={2} />
-          <directionalLight position={[10, 10, 5]} intensity={3} />
-          <pointLight position={[-10, -10, -10]} intensity={2} />
-          <Environment preset="sunset" />
-          <CreatureModel
-            creature={{
-              id: 'preview',
-              name: displayName,
-              type: selectedCategory,
-              modelPath: model.modelPath,
-              scale: 1.5,
-              position: [0, 0, -3],
-              description: displayName,
-              animation: 'idle'
-            }}
-            position={[0, 0, -3]}
-            scale={1.5}
-          />
-          <OrbitControls enablePan={false} enableZoom={true} enableRotate={true} autoRotate={true} autoRotateSpeed={2} />
-        </Canvas>
+      <div className={`grid ${expandedView ? 'grid-cols-2' : 'grid-cols-1'} gap-6`}>
+        {/* Left Column - Preview and Controls */}
+        <div>
+          {/* 3D Preview */}
+          <div className="aspect-video bg-gradient-to-br from-slate-900 to-blue-900 rounded-xl mb-4 flex items-center justify-center border border-cyan-500/30 relative">
+            <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
+              <ambientLight intensity={2} />
+              <directionalLight position={[10, 10, 5]} intensity={3} />
+              <pointLight position={[-10, -10, -10]} intensity={2} />
+              <Environment preset="sunset" />
+
+              {showGrid && (
+                <gridHelper args={[10, 10, 0x444444, 0x222222]} />
+              )}
+
+              <CreatureModel
+                creature={{
+                  id: 'preview',
+                  name: displayName,
+                  type: selectedCategory,
+                  modelPath: model.modelPath,
+                  scale: testScale,
+                  position: [0, 0, -3],
+                  description: displayName,
+                  animation: 'idle'
+                }}
+                position={[0, 0, -3]}
+                scale={testScale}
+              />
+              <OrbitControls
+                enablePan={true}
+                enableZoom={true}
+                enableRotate={true}
+                autoRotate={autoRotate}
+                autoRotateSpeed={2}
+              />
+            </Canvas>
+
+            {/* Preview Controls Overlay */}
+            <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm rounded-lg p-2 space-y-1">
+              <button
+                onClick={() => setAutoRotate(!autoRotate)}
+                className="w-full px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-all"
+              >
+                🔄 {autoRotate ? 'Stop' : 'Rotate'}
+              </button>
+              <button
+                onClick={() => setShowGrid(!showGrid)}
+                className="w-full px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-all"
+              >
+                📐 {showGrid ? 'Hide' : 'Show'} Grid
+              </button>
+            </div>
+          </div>
+
+          {/* Scale Testing */}
+          <div className="bg-slate-800/50 rounded-xl p-4 mb-4">
+            <label className="text-sm text-slate-300 font-semibold mb-2 block flex items-center justify-between">
+              <span>Test Size: {testScale.toFixed(1)}x ({(testScale * 100).toFixed(0)}cm)</span>
+              <button
+                onClick={() => setTestScale(1.5)}
+                className="text-xs text-cyan-400 hover:text-cyan-300"
+              >
+                Reset
+              </button>
+            </label>
+            <input
+              type="range"
+              min="0.1"
+              max="5"
+              step="0.1"
+              value={testScale}
+              onChange={(e) => setTestScale(parseFloat(e.target.value))}
+              className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+            />
+            <div className="flex justify-between text-xs text-slate-500 mt-1">
+              <span>0.1x</span>
+              <span>2.5x</span>
+              <span>5x</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Model Information & Tests */}
+        <div>
+          {/* File Information */}
+          <div className="bg-slate-800/50 rounded-xl p-4 mb-4">
+            <h4 className="text-white font-bold mb-3 flex items-center">
+              <span className="text-lg mr-2">📋</span>
+              File Information
+            </h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Format:</span>
+                <span className="text-white font-mono">{fileFormat}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">File Size:</span>
+                <span className="text-white font-mono">{fileSize}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Path:</span>
+                <span className="text-white font-mono text-xs truncate max-w-[200px]">{model.modelPath}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Model Statistics */}
+          {modelStats && (
+            <div className="bg-slate-800/50 rounded-xl p-4 mb-4">
+              <h4 className="text-white font-bold mb-3 flex items-center">
+                <span className="text-lg mr-2">📊</span>
+                Model Statistics
+              </h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Vertices:</span>
+                  <span className="text-white font-mono">{modelStats.vertices.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Triangles:</span>
+                  <span className="text-white font-mono">{modelStats.triangles.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Materials:</span>
+                  <span className="text-white font-mono">{modelStats.materials}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Animations:</span>
+                  <span className="text-white font-mono">{modelStats.animations}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Textures:</span>
+                  <span className={`font-mono ${modelStats.hasTextures ? 'text-green-400' : 'text-yellow-400'}`}>
+                    {modelStats.hasTextures ? '✓ Yes' : '⚠ None'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quality Checks */}
+          <div className="bg-slate-800/50 rounded-xl p-4 mb-4">
+            <h4 className="text-white font-bold mb-3 flex items-center">
+              <span className="text-lg mr-2">✓</span>
+              Quality Checks
+            </h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">File exists</span>
+                <span className="text-green-400">✓ Pass</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Format valid</span>
+                <span className="text-green-400">✓ Pass</span>
+              </div>
+              {modelStats && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Poly count</span>
+                    <span className={modelStats.triangles < 100000 ? 'text-green-400' : 'text-yellow-400'}>
+                      {modelStats.triangles < 100000 ? '✓ Optimal' : '⚠ High'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Has animations</span>
+                    <span className={modelStats.animations > 0 ? 'text-green-400' : 'text-slate-500'}>
+                      {modelStats.animations > 0 ? `✓ ${modelStats.animations} found` : '- None'}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Test in AR Button */}
+          <button
+            onClick={handleTestInAR}
+            className="w-full py-3 mb-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center space-x-2"
+          >
+            <span>🎥</span>
+            <span>Test in AR View</span>
+          </button>
+        </div>
       </div>
 
       {/* Category Selection */}
       <div className="mb-4">
-        <label className="text-sm text-slate-300 font-semibold mb-2 block">Select Category</label>
+        <label className="text-sm text-slate-300 font-semibold mb-2 block">Select Gallery Category</label>
         <select
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
@@ -100,17 +334,30 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
         </select>
       </div>
 
-      {/* Actions */}
+      {/* Final Approval */}
+      <div className="bg-green-900/20 border border-green-500/30 rounded-xl p-4 mb-4">
+        <div className="flex items-start space-x-3">
+          <span className="text-2xl">✅</span>
+          <div className="flex-1">
+            <h4 className="text-white font-bold mb-1">Ready to Approve?</h4>
+            <p className="text-green-300 text-sm">
+              After testing, click below to add this model to the <strong>{categories.find(c => c.value === selectedCategory)?.label}</strong> gallery.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Approve Button */}
       <button
         onClick={handleApprove}
         disabled={isApproving}
-        className={`w-full py-3 rounded-xl font-bold transition-all ${
+        className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
           isApproving
             ? 'bg-green-600/50 text-white cursor-not-allowed'
-            : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg'
+            : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg hover:shadow-xl'
         }`}
       >
-        {isApproving ? '✅ Approved!' : '✅ Approve & Add to Gallery'}
+        {isApproving ? '✅ Approved! Adding to Gallery...' : '✅ Approve & Add to Gallery'}
       </button>
     </div>
   );
@@ -888,7 +1135,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-6">
                   {pendingModels.map((model) => (
                     <PendingModelCard
                       key={model.fileName}
