@@ -463,39 +463,15 @@ function ARExperienceContent() {
 
           {/* Animated Touch Indicator - Controlled by dashboard settings */}
           {activeCreature && showDelayedTouchIndicator && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+            <div className="absolute bottom-40 left-1/2 transform -translate-x-1/2 pointer-events-none"
               style={{
                 animation: 'slideInFromTop 0.6s ease-out, fadeOut 0.5s ease-out forwards',
                 animationDelay: `0s, ${(touchIndicatorDuration - 500) / 1000}s`
               }}>
-              <div className="relative flex flex-col items-center">
-                {/* Professional instruction card with enhanced styling */}
-                <div className="relative bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 backdrop-blur-xl text-white px-8 py-4 rounded-3xl font-bold text-base shadow-[0_0_30px_rgba(6,182,212,0.6)] border-2 border-white/40"
-                  style={{
-                    boxShadow: '0 0 30px rgba(6, 182, 212, 0.6), 0 0 60px rgba(6, 182, 212, 0.3)',
-                  }}>
-                  <div className="flex items-center space-x-3">
-                    {/* Animated touch icon */}
-                    <div className="relative">
-                      <div className="text-3xl" style={{
-                        animation: 'touchBounce 1.5s ease-in-out infinite',
-                      }}>👆</div>
-                      {/* Ripple rings around the hand */}
-                      <div className="absolute inset-0 -m-2">
-                        <div className="absolute inset-0 border-2 border-white/40 rounded-full"
-                          style={{ animation: 'ripple 2s ease-out infinite' }}></div>
-                        <div className="absolute inset-0 border-2 border-white/30 rounded-full"
-                          style={{ animation: 'ripple 2s ease-out infinite 0.5s' }}></div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-lg tracking-wide">Tap Fish to Interact</span>
-                      <span className="text-xs text-cyan-100 font-normal mt-0.5">Watch them dance!</span>
-                    </div>
-                  </div>
-                  {/* Glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 via-blue-400/20 to-cyan-400/20 rounded-3xl blur-xl -z-10"></div>
-                </div>
+              <div className="relative flex items-center space-x-2 bg-black/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10">
+                {/* Animated touch icon */}
+                <div className="text-xl animate-bounce">👆</div>
+                <span className="text-white/70 text-sm font-medium">Tap Fish</span>
               </div>
             </div>
           )}
@@ -506,7 +482,7 @@ function ARExperienceContent() {
               <SpeechBubble
                 fact={currentFact}
                 language={preferredLanguage}
-                onLanguageChange={setPreferredLanguage}
+                onLanguageChange={() => {}}
                 onClose={() => setShowSpeechBubble(false)}
               />
             </div>
