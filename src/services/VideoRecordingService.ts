@@ -33,7 +33,6 @@ export class RecordingManager {
   private frameCount: number = 0;
 
   constructor() {
-    console.log('📹 RecordingManager initialized');
   }
 
   /**
@@ -62,16 +61,13 @@ export class RecordingManager {
         throw new Error('Failed to get canvas context');
       }
 
-      console.log('✅ Canvas created:', this.canvas.width, 'x', this.canvas.height);
 
       // Find best supported MIME type
       const mimeType = this.getSupportedMimeType();
 
       // Note: We'll create the MediaRecorder when recording starts
       // so we can use the canvas stream
-      console.log('✅ RecordingManager ready with', mimeType);
     } catch (error) {
-      console.error('❌ RecordingManager initialization failed:', error);
       throw error;
     }
   }
@@ -105,12 +101,10 @@ export class RecordingManager {
     this.mediaRecorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
         this.chunks.push(event.data);
-        console.log('📦 Chunk received:', event.data.size, 'bytes');
       }
     };
 
     this.mediaRecorder.onstop = () => {
-      console.log('⏹️ Recording stopped, processing', this.chunks.length, 'chunks');
 
       if (this.chunks.length === 0) {
         const error = new Error('No video data recorded');
@@ -119,14 +113,12 @@ export class RecordingManager {
       }
 
       const blob = new Blob(this.chunks, { type: mimeType });
-      console.log('✅ Video blob created:', blob.size, 'bytes');
 
       this.onDataCallback?.(blob);
       this.chunks = [];
     };
 
     this.mediaRecorder.onerror = (event) => {
-      console.error('❌ Recording error:', event);
       this.onErrorCallback?.(new Error('Recording failed'));
     };
   }
@@ -381,7 +373,6 @@ export class RecordingManager {
         if (hasWebGLIndicators || allCanvases.length >= 2) {
           webglCanvas = canvas;
           if (!this.webglCanvasWarned) {
-            console.log('🎨 Found WebGL canvas:', {
               width: canvas.width,
               height: canvas.height,
               dataEngine: canvas.getAttribute('data-engine')
@@ -398,7 +389,6 @@ export class RecordingManager {
         // Draw the WebGL 3D canvas on top of video
         this.ctx.drawImage(webglCanvas, 0, 0, this.canvas.width, this.canvas.height);
       } catch (error) {
-        console.error('❌ Failed to draw WebGL canvas:', error);
       }
     }
 
@@ -415,7 +405,6 @@ export class RecordingManager {
    * Start recording with AR overlay
    */
   start(): void {
-    console.log('🎬 Starting recording...');
 
     if (!this.canvas || !this.ctx) {
       throw new Error('RecordingManager not initialized');
@@ -425,8 +414,6 @@ export class RecordingManager {
       throw new Error('Recording already in progress');
     }
 
-    console.log('📺 Recording canvas size:', this.canvas.width, 'x', this.canvas.height);
-    console.log('🎥 Video element size:', this.videoElement?.videoWidth, 'x', this.videoElement?.videoHeight);
 
     // Reset warning flag and frame counter
     this.webglCanvasWarned = false;
@@ -455,7 +442,6 @@ export class RecordingManager {
 
     this.chunks = [];
     this.mediaRecorder.start(1000); // Collect data every second
-    console.log('✅ Recording started with AR overlay at', fps, 'fps, mimeType:', mimeType);
   }
 
   /**
@@ -469,7 +455,6 @@ export class RecordingManager {
     }
 
     if (!this.mediaRecorder || this.mediaRecorder.state !== 'recording') {
-      console.warn('⚠️ No active recording to stop');
       return;
     }
 
@@ -523,7 +508,6 @@ export class RecordingManager {
     this.ctx = null;
     this.overlayData = { bubbles: [] };
     this.frameCount = 0;
-    console.log('🧹 RecordingManager cleaned up');
   }
 }
 
@@ -532,7 +516,6 @@ export class BlobManager {
   private videoUrl: string | null = null;
 
   constructor() {
-    console.log('💾 BlobManager initialized');
   }
 
   /**
@@ -545,7 +528,6 @@ export class BlobManager {
     this.videoBlob = blob;
     this.videoUrl = URL.createObjectURL(blob);
 
-    console.log('✅ Blob stored:', {
       size: blob.size,
       type: blob.type,
       url: this.videoUrl,
@@ -588,7 +570,6 @@ export class BlobManager {
   cleanup(): void {
     if (this.videoUrl) {
       URL.revokeObjectURL(this.videoUrl);
-      console.log('🗑️ Blob URL revoked');
     }
     this.videoBlob = null;
     this.videoUrl = null;
@@ -612,7 +593,6 @@ export class ShareManager {
     document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
-    console.log('✅ Download initiated:', fileName);
   }
 
   /**
@@ -635,7 +615,6 @@ export class ShareManager {
 
     if (shareUrl) {
       window.open(shareUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
-      console.log('✅ Share opened:', platform);
     }
   }
 
@@ -662,7 +641,6 @@ export class VideoRecordingService {
     this.recording = new RecordingManager();
     this.blob = new BlobManager();
     this.share = new ShareManager();
-    console.log('🎬 VideoRecordingService initialized');
   }
 
   /**
@@ -681,7 +659,6 @@ export class VideoRecordingService {
   reset(): void {
     this.recording.cleanup();
     this.blob.cleanup();
-    console.log('🔄 VideoRecordingService reset');
   }
 }
 

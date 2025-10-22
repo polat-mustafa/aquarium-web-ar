@@ -42,7 +42,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         setCreatures(allCreatures);
         setIsLoading(false);
       } catch (error) {
-        console.error('Failed to load creatures:', error);
         setIsLoading(false);
       }
     };

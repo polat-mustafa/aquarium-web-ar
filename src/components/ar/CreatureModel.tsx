@@ -156,7 +156,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
       },
       undefined,
       (err) => {
-        console.error('Error loading model:', err);
         setError(err.message);
         setLoading(false);
       }
@@ -216,24 +215,7 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
 
     const time = state.clock.elapsedTime;
 
-    // Force visibility on model
-    if (model) {
-      model.visible = true;
-      model.frustumCulled = false;
-
-      model.traverse((child: any) => {
-        if (child.isMesh) {
-          child.visible = true;
-          child.frustumCulled = false;
-        }
-      });
-    }
-
-    // Ensure group is visible
-    groupRef.current.visible = true;
-    groupRef.current.frustumCulled = false;
-
-    // CRITICAL: Update mixer FIRST for embedded GLB animations
+    // Update mixer for embedded GLB animations
     if (mixerRef.current && model) {
       const validDelta = delta && !isNaN(delta) && delta > 0 ? delta : 0.016;
       mixerRef.current.update(validDelta);

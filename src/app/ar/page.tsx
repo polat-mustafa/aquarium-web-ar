@@ -79,9 +79,7 @@ function ARExperienceContent() {
   useEffect(() => {
     if (!arInitializedRef.current && !isARInitialized) {
       arInitializedRef.current = true;
-      console.log('🎯 Initializing AR (ONE TIME ONLY)');
       initializeAR().catch((error) => {
-        console.error('AR initialization failed:', error);
       });
     }
   }, []); // Empty deps - only run once
@@ -131,7 +129,6 @@ function ARExperienceContent() {
           );
         }
       } catch (error) {
-        console.error('Camera initialization failed:', error);
         if (mounted) {
           setCameraError('Camera access denied. Please allow camera permissions and refresh.');
         }
@@ -151,7 +148,6 @@ function ARExperienceContent() {
   useEffect(() => {
     if (!creatureIdFromUrl || creatureLoadedRef.current) return;
 
-    console.log('🐟 Loading creature from URL:', creatureIdFromUrl);
 
     // Try resolve modelPath via MODEL_REGISTRY first
     let resolvedName: string | undefined = undefined;
@@ -199,7 +195,6 @@ function ARExperienceContent() {
         animation: 'idle' as const
       };
 
-      console.log('✅ Setting active creature:', {
         name: resolvedName,
         modelPath: resolvedModelPath,
         hasModel: !!resolvedModelPath
@@ -214,7 +209,6 @@ function ARExperienceContent() {
         setShowCreaturePopup(false);
       }, 2000);
     } else {
-      console.warn('⚠️ Could not resolve creature from URL:', creatureIdFromUrl);
     }
   }, [creatureIdFromUrl, modelSizeSettings, setActiveCreature]); // Only depend on the memoized creature ID and settings
 
@@ -222,7 +216,6 @@ function ARExperienceContent() {
   const handleQRDetection = useCallback((result: QRDetectionResult) => {
     try {
       if (result.detected && result.creature) {
-        console.log('📱 QR code detected, loading creature:', result.creature.name);
         setActiveCreature(result.creature);
         setShowCreaturePopup(true);
         creatureLoadedRef.current = true;
@@ -233,7 +226,6 @@ function ARExperienceContent() {
         }, 2000);
       }
     } catch (error) {
-      console.error('QR handling error:', error);
     }
   }, [setActiveCreature]);
 
@@ -241,7 +233,6 @@ function ARExperienceContent() {
   // Creature tap handler
   const handleCreatureTap = useCallback(() => {
     if (activeCreature) {
-      console.log('✨ Triggering animation for:', activeCreature.name);
       triggerSpecialAnimation();
     }
   }, [activeCreature, triggerSpecialAnimation]);
@@ -343,12 +334,10 @@ function ARExperienceContent() {
           });
 
           videoService.recording.onError((error) => {
-            console.error('Recording error:', error);
             alert('Video recording failed: ' + error.message);
           });
         })
         .catch((error) => {
-          console.error('Failed to initialize recording:', error);
         });
     }
 
@@ -376,7 +365,6 @@ function ARExperienceContent() {
         setRecordingTime(prev => prev + 1);
       }, 1000);
     } catch (error) {
-      console.error('Failed to start recording:', error);
       alert('Failed to start recording: ' + (error as Error).message);
     }
   }, []);
@@ -393,7 +381,6 @@ function ARExperienceContent() {
       }
       setRecordingTime(0);
     } catch (error) {
-      console.error('Failed to stop recording:', error);
     }
   }, []);
 
@@ -403,7 +390,6 @@ function ARExperienceContent() {
       document.documentElement.requestFullscreen().then(() => {
         setIsFullscreen(true);
       }).catch((err) => {
-        console.error('Error entering fullscreen:', err);
       });
     } else {
       document.exitFullscreen().then(() => {
