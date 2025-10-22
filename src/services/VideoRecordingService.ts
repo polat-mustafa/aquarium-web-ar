@@ -3,6 +3,8 @@
  * Singleton service for managing video recording lifecycle
  */
 
+import html2canvas from 'html2canvas';
+
 export class RecordingManager {
   private mediaRecorder: MediaRecorder | null = null;
   private chunks: Blob[] = [];
@@ -15,6 +17,9 @@ export class RecordingManager {
   private animationFrameId: number | null = null;
   private videoElement: HTMLVideoElement | null = null;
   private webglCanvasWarned: boolean = false;
+  private overlayCanvas: HTMLCanvasElement | null = null;
+  private frameCount: number = 0;
+  private overlayUpdateInterval: number = 3; // Update overlay every N frames for performance
 
   constructor() {
     console.log('📹 RecordingManager initialized');
@@ -116,10 +121,38 @@ export class RecordingManager {
   }
 
   /**
+   * Capture overlay elements (speech bubbles, effects) using html2canvas
+   */
+  private async captureOverlay(): Promise<void> {
+    // Find the AR overlay container
+    const overlayContainer = document.getElementById('ar-overlay-content');
+    if (!overlayContainer) return;
+
+    try {
+      const canvas = await html2canvas(overlayContainer, {
+        backgroundColor: null, // Transparent background
+        logging: false,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        windowWidth: window.innerWidth,
+        windowHeight: window.innerHeight,
+        scale: 1,
+        useCORS: true
+      });
+
+      this.overlayCanvas = canvas;
+    } catch (error) {
+      console.error('❌ Failed to capture overlay:', error);
+    }
+  }
+
+  /**
    * Composite video and AR overlay onto canvas
    */
   private compositeFrame(): void {
     if (!this.canvas || !this.ctx || !this.videoElement) return;
+
+    this.frameCount++;
 
     // Clear canvas to transparent
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -136,8 +169,8 @@ export class RecordingManager {
     const allCanvases = document.querySelectorAll('canvas');
 
     for (const canvas of allCanvases) {
-      // Skip our compositing canvas
-      if (canvas === this.canvas) continue;
+      // Skip our compositing canvas and overlay canvas
+      if (canvas === this.canvas || canvas === this.overlayCanvas) continue;
 
       // Look for Three.js canvas - it should be the largest canvas that's not ours
       // and should have reasonable dimensions
@@ -149,8 +182,7 @@ export class RecordingManager {
           parent?.className.includes('r3f') ||
           canvas.width === window.innerWidth && canvas.height === window.innerHeight;
 
-        if (hasWebGLIndicators || allCanvases.length === 2) {
-          // If there are only 2 canvases (ours and Three.js), use the other one
+        if (hasWebGLIndicators || allCanvases.length >= 2) {
           webglCanvas = canvas;
           if (!this.webglCanvasWarned) {
             console.log('🎨 Found WebGL canvas:', {
@@ -158,7 +190,7 @@ export class RecordingManager {
               height: canvas.height,
               dataEngine: canvas.getAttribute('data-engine')
             });
-            this.webglCanvasWarned = true; // Use flag to log once
+            this.webglCanvasWarned = true;
           }
           break;
         }
@@ -171,6 +203,20 @@ export class RecordingManager {
         this.ctx.drawImage(webglCanvas, 0, 0, this.canvas.width, this.canvas.height);
       } catch (error) {
         console.error('❌ Failed to draw WebGL canvas:', error);
+      }
+    }
+
+    // Update overlay capture every N frames for performance
+    if (this.frameCount % this.overlayUpdateInterval === 0) {
+      this.captureOverlay(); // Async, but we use the previous frame's overlay
+    }
+
+    // Draw cached overlay on top if available
+    if (this.overlayCanvas) {
+      try {
+        this.ctx.drawImage(this.overlayCanvas, 0, 0, this.canvas.width, this.canvas.height);
+      } catch (error) {
+        console.error('❌ Failed to draw overlay:', error);
       }
     }
 
@@ -197,8 +243,10 @@ export class RecordingManager {
     console.log('📺 Recording canvas size:', this.canvas.width, 'x', this.canvas.height);
     console.log('🎥 Video element size:', this.videoElement?.videoWidth, 'x', this.videoElement?.videoHeight);
 
-    // Reset warning flag
+    // Reset warning flag and frame counter
     this.webglCanvasWarned = false;
+    this.frameCount = 0;
+    this.overlayCanvas = null;
 
     // Start compositing frames
     this.animationFrameId = requestAnimationFrame(() => this.compositeFrame());
@@ -288,6 +336,8 @@ export class RecordingManager {
     this.chunks = [];
     this.canvas = null;
     this.ctx = null;
+    this.overlayCanvas = null;
+    this.frameCount = 0;
     console.log('🧹 RecordingManager cleaned up');
   }
 }

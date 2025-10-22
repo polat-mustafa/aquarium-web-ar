@@ -462,6 +462,7 @@ function ARExperienceContent() {
 
       {/* AR Content Overlay - Render Three.js model viewer - Always visible */}
       <div
+        id="ar-overlay-content"
         className="fixed inset-0 w-full h-full z-20"
         style={{ background: 'transparent', pointerEvents: 'auto' }}
         onClick={handleScreenTap}
