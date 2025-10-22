@@ -33,13 +33,13 @@ export const MODEL_REGISTRY: ModelDefinition[] = [
   // Fish models - Your uploaded 3D models
   {
     fileName: 'tuna fish-fish.glb',
-    creatureName: 'Tuna Fish',
+    creatureId: 'tuna',
     category: 'fish',
     modelPath: '/models/tuna fish-fish.glb'
   },
   {
     fileName: 'Zebrasoma Xanthurum-fish.glb',
-    creatureName: 'Zebrasoma Xanthurum',
+    creatureId: 'zebrasoma',
     category: 'fish',
     modelPath: '/models/Zebrasoma Xanthurum-fish.glb'
   },

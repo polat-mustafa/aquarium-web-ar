@@ -118,6 +118,14 @@ export function getGalleryCreatures(language: Language): GalleryCreature[] {
       hashtags: t.creatures.tuna.hashtags,
       defaultIconPath: '/default-icons/tuna.png'
     },
+    {
+      id: 'zebrasoma',
+      name: 'Zebrasoma Xanthurum',
+      emoji: '🐠',
+      category: 'fish',
+      hashtags: ['tropical', 'colorful', 'tang'],
+      defaultIconPath: '/default-icons/angelfish.png'
+    },
 
     // Marine Mammals
     {
