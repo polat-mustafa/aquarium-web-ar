@@ -70,6 +70,12 @@ function ARExperienceContent() {
     };
   }, []);
 
+  // Debug: Log camera ready state changes
+  useEffect(() => {
+    console.log('🎬 isCameraReady changed:', isCameraReady);
+    console.log('🎬 cameraError:', cameraError);
+  }, [isCameraReady, cameraError]);
+
   // Initialize AR from store (once) - ONLY on first mount
   useEffect(() => {
     if (!arInitializedRef.current && !isARInitialized) {
@@ -83,48 +89,63 @@ function ARExperienceContent() {
 
   // Initialize camera and QR detection (once)
   useEffect(() => {
+    console.log('📹 Starting camera initialization...');
     const initializeCamera = async () => {
       try {
+        console.log('📹 Requesting camera stream...');
         const stream = await createCameraStream();
+        console.log('✅ Camera stream obtained:', stream.active);
         streamRef.current = stream;
 
         if (videoRef.current) {
+          console.log('📹 Setting video srcObject...');
           videoRef.current.srcObject = stream;
           try {
+            console.log('📹 Attempting to play video...');
             await videoRef.current.play();
+            console.log('✅ Video playing successfully!');
+            console.log('📹 Video dimensions:', videoRef.current.videoWidth, 'x', videoRef.current.videoHeight);
             setCameraError(null);
             setIsCameraReady(true);
+            console.log('✅ Camera ready state set to TRUE');
           } catch (playError) {
             if (playError instanceof Error && playError.name !== 'AbortError') {
-              console.error('Video play error:', playError);
+              console.error('❌ Video play error:', playError);
               setCameraError('Unable to start camera video');
               return;
             }
-            console.log('Video play was interrupted, continuing...');
+            console.log('⚠️ Video play was interrupted, continuing anyway...');
             setCameraError(null);
             setIsCameraReady(true);
+            console.log('✅ Camera ready state set to TRUE (after interruption)');
           }
 
           // Initialize QR detection
+          console.log('📹 Initializing QR detection...');
           const stopQRDetection = initializeQRDetection(
             videoRef.current,
             handleQRDetection
           );
+          console.log('✅ QR detection initialized');
 
           return () => {
+            console.log('🧹 Cleaning up camera...');
             stopQRDetection();
             if (streamRef.current) {
               stopCameraStream(streamRef.current);
             }
           };
+        } else {
+          console.error('❌ Video ref is null!');
         }
       } catch (error) {
-        console.error('Camera initialization failed:', error);
+        console.error('❌ Camera initialization failed:', error);
         setCameraError('Camera access denied. Please allow camera permissions and refresh.');
       }
     };
 
     initializeCamera().catch((error) => {
+      console.error('❌ Camera initialization error caught:', error);
       setCameraError('Failed to initialize camera');
     });
   }, []); // Empty deps - only run once
