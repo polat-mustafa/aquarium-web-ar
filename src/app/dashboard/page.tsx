@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Environment } from '@react-three/drei';
+import { OrbitControls, Environment, useGLTF } from '@react-three/drei';
 import { useAppStore } from '@/stores/useAppStore';
 import { CreatureModel } from '@/components/ar/CreatureModel';
 import { LoginForm } from '@/components/dashboard/LoginForm';
@@ -20,6 +20,37 @@ interface ModelConfig {
   category: string;
 }
 
+// Simple Preview Model Component
+function PreviewModel({ modelPath, scale }: { modelPath: string; scale: number }) {
+  try {
+    const { scene } = useGLTF(modelPath);
+    return <primitive object={scene} scale={scale} position={[0, 0, 0]} />;
+  } catch (error) {
+    console.error('Error loading model:', error);
+    return null;
+  }
+}
+
+// Loading Fallback Component
+function LoadingModel() {
+  return (
+    <mesh>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial color="#06b6d4" wireframe />
+    </mesh>
+  );
+}
+
+// Error Fallback Component
+function ErrorModel() {
+  return (
+    <mesh>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial color="#ef4444" />
+    </mesh>
+  );
+}
+
 // Pending Model Card Component with Full Testing
 function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onApprove: () => void }) {
   const [selectedCategory, setSelectedCategory] = useState(model.category);
@@ -30,6 +61,8 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
   const [autoRotate, setAutoRotate] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [expandedView, setExpandedView] = useState(false);
+  const [modelLoadError, setModelLoadError] = useState(false);
+  const [modelLoading, setModelLoading] = useState(true);
 
   const categories = [
     { value: 'fish', label: 'Fish', emoji: '🐟' },
@@ -45,6 +78,7 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
   useEffect(() => {
     async function getFileInfo() {
       try {
+        console.log('🔍 Loading model:', model.modelPath);
         const response = await fetch(model.modelPath, { method: 'HEAD' });
         const size = parseInt(response.headers.get('content-length') || '0');
         const sizeInMB = (size / (1024 * 1024)).toFixed(2);
@@ -54,42 +88,59 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
         // Get model statistics
         const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
         const loader = new GLTFLoader();
-        loader.load(model.modelPath, (gltf) => {
-          let vertices = 0;
-          let triangles = 0;
-          let materials = 0;
-          let animations = gltf.animations.length;
 
-          gltf.scene.traverse((child: any) => {
-            if (child.isMesh) {
-              if (child.geometry) {
-                const positionAttr = child.geometry.attributes.position;
-                if (positionAttr) {
-                  vertices += positionAttr.count;
+        loader.load(
+          model.modelPath,
+          (gltf) => {
+            console.log('✅ Model loaded successfully:', model.modelPath);
+            let vertices = 0;
+            let triangles = 0;
+            let materials = 0;
+            let animations = gltf.animations.length;
+
+            gltf.scene.traverse((child: any) => {
+              if (child.isMesh) {
+                if (child.geometry) {
+                  const positionAttr = child.geometry.attributes.position;
+                  if (positionAttr) {
+                    vertices += positionAttr.count;
+                  }
+                  if (child.geometry.index) {
+                    triangles += child.geometry.index.count / 3;
+                  } else if (positionAttr) {
+                    triangles += positionAttr.count / 3;
+                  }
                 }
-                if (child.geometry.index) {
-                  triangles += child.geometry.index.count / 3;
-                } else if (positionAttr) {
-                  triangles += positionAttr.count / 3;
+                if (child.material) {
+                  materials++;
                 }
               }
-              if (child.material) {
-                materials++;
-              }
-            }
-          });
+            });
 
-          setModelStats({
-            vertices: Math.round(vertices),
-            triangles: Math.round(triangles),
-            materials,
-            animations,
-            hasTextures: materials > 0
-          });
-        });
+            setModelStats({
+              vertices: Math.round(vertices),
+              triangles: Math.round(triangles),
+              materials,
+              animations,
+              hasTextures: materials > 0
+            });
+            setModelLoading(false);
+            setModelLoadError(false);
+          },
+          (progress) => {
+            console.log('📦 Loading progress:', (progress.loaded / progress.total * 100).toFixed(0) + '%');
+          },
+          (error) => {
+            console.error('❌ Error loading model:', error);
+            setModelLoadError(true);
+            setModelLoading(false);
+          }
+        );
       } catch (error) {
-        console.error('Error getting file info:', error);
+        console.error('❌ Error getting file info:', error);
         setFileSize('Unknown');
+        setModelLoadError(true);
+        setModelLoading(false);
       }
     }
     getFileInfo();
@@ -137,54 +188,76 @@ function PendingModelCard({ model, onApprove }: { model: ModelDefinition; onAppr
         <div>
           {/* 3D Preview */}
           <div className="aspect-video bg-gradient-to-br from-slate-900 to-blue-900 rounded-xl mb-4 flex items-center justify-center border border-cyan-500/30 relative">
-            <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
-              <ambientLight intensity={2} />
-              <directionalLight position={[10, 10, 5]} intensity={3} />
-              <pointLight position={[-10, -10, -10]} intensity={2} />
-              <Environment preset="sunset" />
+            {modelLoadError ? (
+              <div className="text-center p-8">
+                <div className="text-6xl mb-4">⚠️</div>
+                <h3 className="text-white font-bold text-xl mb-2">Model Load Error</h3>
+                <p className="text-slate-400 text-sm mb-4">Unable to load the 3D model</p>
+                <div className="text-xs text-slate-500 font-mono mb-4">{model.modelPath}</div>
+                <div className="text-xs text-yellow-400 bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3">
+                  <p className="mb-1">Possible issues:</p>
+                  <ul className="text-left list-disc list-inside">
+                    <li>File doesn't exist at path</li>
+                    <li>GLTF missing .bin or textures</li>
+                    <li>File is corrupted</li>
+                    <li>Wrong file format</li>
+                  </ul>
+                </div>
+              </div>
+            ) : modelLoading ? (
+              <div className="text-center">
+                <div className="text-6xl mb-4 animate-spin">⏳</div>
+                <h3 className="text-white font-bold text-xl mb-2">Loading Model...</h3>
+                <p className="text-slate-400 text-sm">Please wait</p>
+              </div>
+            ) : (
+              <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
+                <ambientLight intensity={2} />
+                <directionalLight position={[10, 10, 5]} intensity={3} />
+                <pointLight position={[-10, -10, -10]} intensity={2} />
+                <Environment preset="sunset" />
 
-              {showGrid && (
-                <gridHelper args={[10, 10, 0x444444, 0x222222]} />
-              )}
+                {showGrid && (
+                  <gridHelper args={[10, 10, 0x444444, 0x222222]} />
+                )}
 
-              <CreatureModel
-                creature={{
-                  id: 'preview',
-                  name: displayName,
-                  type: selectedCategory,
-                  modelPath: model.modelPath,
-                  scale: testScale,
-                  position: [0, 0, -3],
-                  description: displayName,
-                  animation: 'idle'
-                }}
-                position={[0, 0, -3]}
-                scale={testScale}
-              />
-              <OrbitControls
-                enablePan={true}
-                enableZoom={true}
-                enableRotate={true}
-                autoRotate={autoRotate}
-                autoRotateSpeed={2}
-              />
-            </Canvas>
+                <Suspense fallback={<LoadingModel />}>
+                  <PreviewModel modelPath={model.modelPath} scale={testScale} />
+                </Suspense>
 
-            {/* Preview Controls Overlay */}
-            <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm rounded-lg p-2 space-y-1">
-              <button
-                onClick={() => setAutoRotate(!autoRotate)}
-                className="w-full px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-all"
-              >
-                🔄 {autoRotate ? 'Stop' : 'Rotate'}
-              </button>
-              <button
-                onClick={() => setShowGrid(!showGrid)}
-                className="w-full px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-all"
-              >
-                📐 {showGrid ? 'Hide' : 'Show'} Grid
-              </button>
-            </div>
+                <OrbitControls
+                  enablePan={true}
+                  enableZoom={true}
+                  enableRotate={true}
+                  autoRotate={autoRotate}
+                  autoRotateSpeed={2}
+                />
+              </Canvas>
+            )}
+
+            {!modelLoadError && !modelLoading && (
+              <>
+                {/* Preview Controls Overlay */}
+                <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm rounded-lg p-2 space-y-1">
+                  <button
+                    onClick={() => setAutoRotate(!autoRotate)}
+                    className="w-full px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-all"
+                  >
+                    🔄 {autoRotate ? 'Stop' : 'Rotate'}
+                  </button>
+                  <button
+                    onClick={() => setShowGrid(!showGrid)}
+                    className="w-full px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-all"
+                  >
+                    📐 {showGrid ? 'Hide' : 'Show'} Grid
+                  </button>
+                </div>
+                {/* Model Path Info */}
+                <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-1">
+                  <p className="text-xs text-green-400 font-mono">✓ Loaded</p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Scale Testing */}
