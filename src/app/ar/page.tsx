@@ -453,15 +453,11 @@ function ARExperienceContent() {
         x: window.innerWidth / 2,
         y: window.innerHeight * 0.15,
       } : undefined,
-      touchIndicator: activeCreature && showDelayedTouchIndicator ? {
-        text: 'Tap Fish',
-        x: window.innerWidth / 2,
-        y: window.innerHeight - 160,
-      } : undefined,
+      // Don't include touch indicator - it's just UI guidance, not for recording
     };
 
     videoService.recording.updateOverlayData(overlayData);
-  }, [isRecording, bubbles, showSpeechBubble, currentFact, preferredLanguage, enableSpeechBubbles, activeCreature, showDelayedTouchIndicator]);
+  }, [isRecording, bubbles, showSpeechBubble, currentFact, preferredLanguage, enableSpeechBubbles]);
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 relative">
