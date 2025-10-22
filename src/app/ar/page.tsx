@@ -12,6 +12,7 @@ import { initializeQRDetection, createCameraStream, stopCameraStream } from '@/u
 import type { QRDetectionResult } from '@/utils/qrDetection';
 import { hideGlobalLoading } from '@/components/ui/LoadingOverlay';
 import { getRandomFishFact } from '@/utils/fishFacts';
+import { videoService } from '@/services/VideoRecordingService';
 
 function ARExperienceContent() {
   // CRITICAL FIX: Extract creature ID once with useMemo to prevent infinite re-renders
@@ -31,8 +32,7 @@ function ARExperienceContent() {
   const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingInitializedRef = useRef(false);
 
   const {
     activeCreature,
@@ -273,42 +273,65 @@ function ARExperienceContent() {
     lastPinchDistance.current = null;
   }, []);
 
+  // Initialize video recording service when camera is ready
+  useEffect(() => {
+    if (isCameraReady && videoRef.current && !recordingInitializedRef.current) {
+      videoService.recording.initialize(videoRef.current)
+        .then(() => {
+          console.log('✅ Video recording service initialized');
+          recordingInitializedRef.current = true;
+
+          // Setup callbacks
+          videoService.recording.onData((blob) => {
+            console.log('📹 Video recorded:', blob.size, 'bytes');
+            setRecordedVideo(blob);
+            setShowSharePanel(true);
+          });
+
+          videoService.recording.onError((error) => {
+            console.error('❌ Recording error:', error);
+            alert('Video recording failed: ' + error.message);
+          });
+        })
+        .catch((error) => {
+          console.error('❌ Failed to initialize recording:', error);
+        });
+    }
+
+    return () => {
+      if (recordingInitializedRef.current) {
+        videoService.reset();
+        recordingInitializedRef.current = false;
+      }
+    };
+  }, [isCameraReady]);
+
   // Video recording handlers
   const startRecording = useCallback(async () => {
     try {
-      if (!streamRef.current) return;
+      if (!recordingInitializedRef.current) {
+        console.error('❌ Recording service not initialized');
+        return;
+      }
 
-      recordedChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(streamRef.current, {
-        mimeType: 'video/webm;codecs=vp9',
-      });
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        setRecordedVideo(blob);
-        setShowSharePanel(true);
-      };
-
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start();
+      videoService.recording.start();
       setIsRecording(true);
+      console.log('🎬 Recording started');
     } catch (error) {
       console.error('Failed to start recording:', error);
+      alert('Failed to start recording: ' + (error as Error).message);
     }
   }, []);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+    try {
+      videoService.recording.stop();
       setIsRecording(false);
+      console.log('⏹️ Recording stopped');
+    } catch (error) {
+      console.error('Failed to stop recording:', error);
     }
-  }, [isRecording]);
+  }, []);
 
   // Fullscreen handler
   const toggleFullscreen = useCallback(() => {
