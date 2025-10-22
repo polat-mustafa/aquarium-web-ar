@@ -33,6 +33,7 @@ function ARExperienceContent() {
   const [isRecording, setIsRecording] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const recordingInitializedRef = useRef(false);
+  const [showDelayedTouchIndicator, setShowDelayedTouchIndicator] = useState(false);
 
   const {
     activeCreature,
@@ -365,6 +366,19 @@ function ARExperienceContent() {
     }
   }, [showSpeechBubble, activeCreature]);
 
+  // Show touch indicator 1 second after creature appears
+  useEffect(() => {
+    if (activeCreature && showTouchIndicator) {
+      setShowDelayedTouchIndicator(false);
+      const timer = setTimeout(() => {
+        setShowDelayedTouchIndicator(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowDelayedTouchIndicator(false);
+    }
+  }, [activeCreature, showTouchIndicator]);
+
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 relative">
       {/* Camera Video Background */}
@@ -379,14 +393,18 @@ function ARExperienceContent() {
 
       {/* AR Content Overlay - Render Three.js model viewer - Always visible */}
       <div
-        className="fixed inset-0 w-full h-full z-30"
-        style={{ background: 'transparent', pointerEvents: 'auto' }}
-        onClick={handleScreenTap}
-        onTouchStart={handleScreenTap}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        className="fixed inset-0 w-full h-full z-10 pointer-events-none"
+        style={{ background: 'transparent' }}
       >
-        <ARViewer className="w-full h-full" />
+        <div
+          className="w-full h-full pointer-events-auto"
+          onClick={handleScreenTap}
+          onTouchStart={handleScreenTap}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <ARViewer className="w-full h-full" />
+        </div>
 
           {/* Bubble effects */}
           {bubbles.map(bubble => (
@@ -409,27 +427,39 @@ function ARExperienceContent() {
           ))}
 
           {/* Animated Touch Indicator - Controlled by dashboard settings */}
-          {activeCreature && showTouchIndicator && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+          {activeCreature && showDelayedTouchIndicator && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+              style={{
+                animation: 'slideInFromTop 0.6s ease-out, fadeOut 0.5s ease-out forwards',
+                animationDelay: `0s, ${(touchIndicatorDuration - 500) / 1000}s`
+              }}>
               <div className="relative flex flex-col items-center">
-                {/* Professional instruction card */}
-                <div className="bg-gradient-to-r from-cyan-500/95 via-blue-500/95 to-cyan-500/95 backdrop-blur-md text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-2xl border-2 border-cyan-300/60 mb-4"
-                  style={{ animation: `fadeOut ${touchIndicatorDuration / 1000}s forwards` }}>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-2xl animate-bounce" style={{
-                      animation: 'bounce 2s infinite',
-                      textShadow: '0 0 10px rgba(255, 255, 255, 0.5)'
-                    }}>👆</span>
-                    <span>Tap Fish to Interact</span>
+                {/* Professional instruction card with enhanced styling */}
+                <div className="relative bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 backdrop-blur-xl text-white px-8 py-4 rounded-3xl font-bold text-base shadow-[0_0_30px_rgba(6,182,212,0.6)] border-2 border-white/40"
+                  style={{
+                    boxShadow: '0 0 30px rgba(6, 182, 212, 0.6), 0 0 60px rgba(6, 182, 212, 0.3)',
+                  }}>
+                  <div className="flex items-center space-x-3">
+                    {/* Animated touch icon */}
+                    <div className="relative">
+                      <div className="text-3xl" style={{
+                        animation: 'touchBounce 1.5s ease-in-out infinite',
+                      }}>👆</div>
+                      {/* Ripple rings around the hand */}
+                      <div className="absolute inset-0 -m-2">
+                        <div className="absolute inset-0 border-2 border-white/40 rounded-full"
+                          style={{ animation: 'ripple 2s ease-out infinite' }}></div>
+                        <div className="absolute inset-0 border-2 border-white/30 rounded-full"
+                          style={{ animation: 'ripple 2s ease-out infinite 0.5s' }}></div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-lg tracking-wide">Tap Fish to Interact</span>
+                      <span className="text-xs text-cyan-100 font-normal mt-0.5">Watch them dance!</span>
+                    </div>
                   </div>
-                </div>
-
-                {/* Ripple effect for emphasis */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="absolute w-20 h-20 border-3 border-cyan-400/70 rounded-full animate-ping"
-                    style={{ animation: `ping 2.5s cubic-bezier(0, 0, 0.2, 1) infinite, fadeOut ${touchIndicatorDuration / 1000}s forwards` }}></div>
-                  <div className="absolute w-16 h-16 border-3 border-blue-400/50 rounded-full animate-ping"
-                    style={{ animation: `ping 2.5s cubic-bezier(0, 0, 0.2, 1) infinite 0.6s, fadeOut ${touchIndicatorDuration / 1000}s forwards` }}></div>
+                  {/* Glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 via-blue-400/20 to-cyan-400/20 rounded-3xl blur-xl -z-10"></div>
                 </div>
               </div>
             </div>
@@ -459,7 +489,7 @@ function ARExperienceContent() {
                   startRecording();
                 }
               }}
-              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95 ${
+              className={`w-16 h-16 rounded-2xl flex flex-col items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95 ${
                 isRecording
                   ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 animate-pulse'
                   : 'bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500'
@@ -467,13 +497,17 @@ function ARExperienceContent() {
               aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
             >
               {isRecording ? (
-                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="6" y="6" width="12" height="12" rx="2" />
-                </svg>
+                <>
+                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                  <span className="text-[8px] font-bold text-white mt-0.5">STOP</span>
+                </>
               ) : (
-                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="8" />
-                </svg>
+                <>
+                  <div className="w-4 h-4 bg-white rounded-full mb-0.5"></div>
+                  <span className="text-[10px] font-bold text-white">REC</span>
+                </>
               )}
             </button>
 
@@ -497,6 +531,7 @@ function ARExperienceContent() {
               )}
             </button>
           </div>
+        </div>
       </div>
 
       {/* Mobile UI - Professional Overlay */}
