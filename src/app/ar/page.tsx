@@ -72,6 +72,12 @@ function ARExperienceContent() {
     };
   }, []);
 
+  // Debug: Log camera ready state
+  useEffect(() => {
+    console.log('📹 Camera Ready State:', isCameraReady);
+    console.log('📹 Camera Error:', cameraError);
+  }, [isCameraReady, cameraError]);
+
   // Initialize AR from store (once) - ONLY on first mount
   useEffect(() => {
     if (!arInitializedRef.current && !isARInitialized) {
@@ -86,25 +92,47 @@ function ARExperienceContent() {
   // Initialize camera and QR detection (once)
   useEffect(() => {
     let stopQRDetection: (() => void) | null = null;
+    let mounted = true;
 
     const initializeCamera = async () => {
       try {
+        console.log('🎥 Requesting camera access...');
         const stream = await createCameraStream();
+
+        if (!mounted) return;
+
         streamRef.current = stream;
+        console.log('✅ Camera stream obtained');
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
 
+          console.log('⏳ Waiting for video metadata...');
           // Wait for video metadata to load
-          await new Promise<void>((resolve) => {
-            if (videoRef.current) {
-              videoRef.current.onloadedmetadata = () => resolve();
+          await new Promise<void>((resolve, reject) => {
+            if (!videoRef.current) {
+              reject(new Error('Video ref lost'));
+              return;
             }
+
+            const timeout = setTimeout(() => reject(new Error('Metadata load timeout')), 5000);
+
+            videoRef.current.onloadedmetadata = () => {
+              clearTimeout(timeout);
+              console.log('✅ Video metadata loaded');
+              resolve();
+            };
           });
 
+          if (!mounted) return;
+
+          console.log('▶️ Playing video...');
           await videoRef.current.play();
+          console.log('✅ Video playing');
+
           setCameraError(null);
           setIsCameraReady(true);
+          console.log('✅ Camera ready state set to TRUE');
 
           // Initialize QR detection
           stopQRDetection = initializeQRDetection(
@@ -113,18 +141,21 @@ function ARExperienceContent() {
           );
         }
       } catch (error) {
-        console.error('Camera initialization failed:', error);
-        setCameraError('Camera access denied. Please allow camera permissions and refresh.');
+        console.error('❌ Camera initialization failed:', error);
+        if (mounted) {
+          setCameraError('Camera access denied. Please allow camera permissions and refresh.');
+        }
       }
     };
 
     initializeCamera();
 
     return () => {
+      mounted = false;
       if (stopQRDetection) stopQRDetection();
       if (streamRef.current) stopCameraStream(streamRef.current);
     };
-  }, []);
+  }, [handleQRDetection]);
 
   // CRITICAL FIX: Load creature from URL ONCE using ref to prevent re-loading
   useEffect(() => {
