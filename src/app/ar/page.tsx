@@ -632,7 +632,7 @@ function ARExperienceContent() {
                         Aquarium
                       </h1>
                       <span className="text-xs font-semibold text-cyan-400/80 bg-cyan-900/30 px-2 py-0.5 rounded-full border border-cyan-500/30">
-                        v1.0
+                        v1.1
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
