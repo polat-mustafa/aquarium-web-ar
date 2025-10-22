@@ -82,12 +82,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
   // Check if we have a model path
   const hasModelPath = !!creature.modelPath;
 
-  console.log('🔍 CreatureModel for:', {
-    creatureName: creature.name,
-    hasModelPath,
-    modelPath: creature.modelPath
-  });
-
   // Load model using GLTFLoader
   useEffect(() => {
     if (!hasModelPath) {
@@ -95,14 +89,12 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
       return;
     }
 
-    console.log('📦 Starting to load model for:', creature.name);
     const loader = new GLTFLoader();
     const encodedPath = encodeURI(creature.modelPath!);
 
     loader.load(
       encodedPath,
       (gltf) => {
-        console.log('✅ Model loaded successfully for:', creature.name, gltf);
 
         const loadedScene = gltf.scene.clone(true);
 
@@ -140,23 +132,16 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
 
         if (maxDim < MIN_DISPLAY_SIZE && maxDim > 0) {
           scaleNormalizationRef.current = MIN_DISPLAY_SIZE / maxDim;
-          console.log('📏 Normalized scale:', scaleNormalizationRef.current);
         } else {
           scaleNormalizationRef.current = 1;
         }
 
         // Set up animations
         if (gltf.animations && gltf.animations.length > 0) {
-          console.log('🎬 Found animations:', gltf.animations.length);
           const mixer = new THREE.AnimationMixer(loadedScene);
           mixerRef.current = mixer;
 
-          gltf.animations.forEach((clip, index) => {
-            console.log(`🎬 Animation ${index}:`, {
-              name: clip.name,
-              duration: clip.duration,
-              tracks: clip.tracks.length
-            });
+          gltf.animations.forEach((clip) => {
             const action = mixer.clipAction(clip);
             action.reset();
             action.setLoop(THREE.LoopRepeat, Infinity);
@@ -164,22 +149,15 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
             action.clampWhenFinished = false;
             action.enabled = true;
             action.play();
-            console.log(`▶️ Playing animation "${clip.name}" - Active: ${action.isRunning()}, Weight: ${action.getEffectiveWeight()}`);
           });
-          console.log('✅ All animations started');
-        } else {
-          console.warn('⚠️ No animations found in model:', creature.name);
         }
 
         setModel(loadedScene);
         setLoading(false);
       },
-      (progress) => {
-        const percent = (progress.loaded / progress.total) * 100;
-        console.log(`Loading ${creature.name}: ${percent.toFixed(2)}%`);
-      },
+      undefined,
       (err) => {
-        console.error('❌ Error loading model for:', creature.name, err);
+        console.error('Error loading model:', err);
         setError(err.message);
         setLoading(false);
       }
@@ -196,7 +174,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
   // Handle tap/click on creature
   const handleTap = useCallback(() => {
     if (!isTurning) {
-      console.log('🐟 Fish tapped! Starting DANCE animation, showing speech bubble, and changing position');
       setIsTurning(true);
       turnAnimationRef.current = {
         progress: 0,
@@ -261,11 +238,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
     if (mixerRef.current && model) {
       const validDelta = delta && !isNaN(delta) && delta > 0 ? delta : 0.016;
       mixerRef.current.update(validDelta);
-
-      // Debug: Log mixer time every 60 frames (~1 second)
-      if (Math.floor(time) % 3 === 0 && Math.floor(time * 60) % 60 === 0) {
-        console.log('🎥 Mixer time:', mixerRef.current.time.toFixed(2), 'Delta:', validDelta.toFixed(4));
-      }
     }
 
     // Animate position change

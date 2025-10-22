@@ -94,23 +94,11 @@ export const ARScene: React.FC<ARSceneProps> = memo(({ children }) => {
   const { scene, camera, gl } = useThree();
   const arInitialized = useRef(false);
 
-  // DIAGNOSTIC: Track ARScene mount/unmount
-  useEffect(() => {
-    console.log('🟢 ARScene MOUNTED');
-    return () => {
-      console.log('🔴 ARScene UNMOUNTED - THIS SHOULD NEVER HAPPEN!');
-    };
-  }, []);
-
   // CRITICAL: Force scene background to null on EVERY render to prevent white screen
   useFrame(() => {
     if (scene) {
       scene.background = null;
-      // Ensure scene is properly configured for AR
-      if (!scene.userData.arConfigured) {
-        scene.userData.arConfigured = true;
-        console.log('🔧 ARScene configured for transparency');
-      }
+      scene.userData.arConfigured = true;
     }
     if (gl) {
       gl.setClearColor(0x000000, 0);
@@ -130,45 +118,30 @@ export const ARScene: React.FC<ARSceneProps> = memo(({ children }) => {
 
     const initializeARJS = async () => {
       try {
-        console.log('🎯 Initializing AR Scene...');
-
         // CRITICAL: Set scene background to null for transparency
         if (scene) {
           scene.background = null;
-          console.log('✅ Scene background set to null');
         }
 
         if (camera) {
           camera.position.set(0, 0, 5);
           camera.lookAt(0, 0, 0);
-          console.log('✅ Camera positioned');
         }
 
         // CRITICAL: Configure renderer for transparency and recording
         if (gl) {
           gl.setSize(window.innerWidth, window.innerHeight);
-          gl.setClearColor(0x000000, 0); // Fully transparent clear
-          gl.setClearAlpha(0); // Ensure alpha channel is 0
-
-          // Ensure proper clearing for transparency
+          gl.setClearColor(0x000000, 0);
+          gl.setClearAlpha(0);
           gl.autoClear = true;
           gl.autoClearColor = true;
           gl.autoClearDepth = true;
           gl.autoClearStencil = true;
-
-          console.log('✅ Renderer configured:', {
-            size: `${window.innerWidth}x${window.innerHeight}`,
-            preserveDrawingBuffer: gl.getContextAttributes()?.preserveDrawingBuffer,
-            alpha: gl.getContextAttributes()?.alpha,
-            clearColor: gl.getClearColor(new THREE.Color()),
-            clearAlpha: gl.getClearAlpha()
-          });
         }
 
         arInitialized.current = true;
-        console.log('✅ AR Scene initialized successfully');
       } catch (error) {
-        console.error('❌ Failed to initialize AR.js:', error);
+        console.error('Failed to initialize AR:', error);
       }
     };
 

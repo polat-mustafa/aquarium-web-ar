@@ -44,15 +44,6 @@ const ARViewer: React.FC<ARViewerProps> = memo(({ debug = false, className = '' 
   const [isDragging, setIsDragging] = useState(false);
   const lastTouchRef = useRef({ x: 0, y: 0 });
 
-  // DIAGNOSTIC: Track Canvas mount/unmount
-  useEffect(() => {
-    console.log('🟢 ARViewer Canvas MOUNTED');
-    return () => {
-      console.log('🔴 ARViewer Canvas UNMOUNTED - THIS SHOULD NEVER HAPPEN!');
-    };
-  }, []);
-
-  console.log('🎨 ARViewer render:', activeCreature?.name || 'no creature');
 
   return (
     <div className={`relative w-full h-full ${className}`} style={{ background: 'transparent', pointerEvents: 'auto' }}>
@@ -78,7 +69,6 @@ const ARViewer: React.FC<ARViewerProps> = memo(({ debug = false, className = '' 
           gl.setClearColor(0x000000, 0);
           gl.setClearAlpha(0);
           scene.background = null;
-          console.log('✅ Canvas created with transparency settings');
         }}
       >
         {/* Brighter lighting for better model visibility */}
