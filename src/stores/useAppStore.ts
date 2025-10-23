@@ -280,8 +280,8 @@ export const useAppStore = create<AppStore>()(
           // Capture the photo
           const photoBlob = await photoService.capture.capture();
 
-          // Store the photo
-          photoService.blob.store(photoBlob, activeCreature?.name);
+          // Store the photo and wait for localStorage save to complete
+          await photoService.blob.store(photoBlob, activeCreature?.name);
 
           set(
             {

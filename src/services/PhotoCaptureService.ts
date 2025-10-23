@@ -242,7 +242,7 @@ export class PhotoBlobManager {
   /**
    * Store photo blob and create URL
    */
-  store(blob: Blob, creatureName?: string): string {
+  async store(blob: Blob, creatureName?: string): Promise<string> {
     // Clean up previous
     this.cleanup();
 
@@ -253,8 +253,8 @@ export class PhotoBlobManager {
       captureTime: new Date(),
     };
 
-    // Persist to localStorage as data URL
-    this.persistToStorage(blob);
+    // Persist to localStorage as data URL (wait for completion)
+    await this.persistToStorage(blob);
 
     return this.photoUrl;
   }
@@ -262,19 +262,26 @@ export class PhotoBlobManager {
   /**
    * Persist photo to localStorage as data URL
    */
-  private persistToStorage(blob: Blob): void {
-    if (typeof window === 'undefined') return;
+  private persistToStorage(blob: Blob): Promise<void> {
+    if (typeof window === 'undefined') return Promise.resolve();
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      try {
-        localStorage.setItem(this.STORAGE_KEY, reader.result as string);
-        localStorage.setItem(this.METADATA_KEY, JSON.stringify(this.metadata));
-      } catch (error) {
-        console.warn('Failed to persist photo to localStorage:', error);
-      }
-    };
-    reader.readAsDataURL(blob);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        try {
+          localStorage.setItem(this.STORAGE_KEY, reader.result as string);
+          localStorage.setItem(this.METADATA_KEY, JSON.stringify(this.metadata));
+          resolve();
+        } catch (error) {
+          console.warn('Failed to persist photo to localStorage:', error);
+          reject(error);
+        }
+      };
+      reader.onerror = () => {
+        reject(new Error('FileReader error'));
+      };
+      reader.readAsDataURL(blob);
+    });
   }
 
   /**
