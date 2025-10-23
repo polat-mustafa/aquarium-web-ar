@@ -235,8 +235,17 @@ export class PhotoBlobManager {
   private restorationPromise: Promise<void> | null = null;
 
   constructor() {
-    // Try to restore from localStorage on initialization
+    // Don't auto-restore from localStorage on initialization
+    // Only restore when explicitly needed (on preview page)
+    this.restorationPromise = Promise.resolve();
+  }
+
+  /**
+   * Initialize restoration from localStorage (call this on preview page)
+   */
+  async initRestore(): Promise<void> {
     this.restorationPromise = this.restoreFromStorage();
+    await this.restorationPromise;
   }
 
   /**

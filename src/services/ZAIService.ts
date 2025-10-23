@@ -35,6 +35,7 @@ export interface ZAIError {
 
 /**
  * Generate an AI-styled image using Z.AI CogView-4
+ * Uses Next.js API route to securely handle API key
  */
 export async function generateImageWithZAI(
   prompt: string,
@@ -43,36 +44,31 @@ export async function generateImageWithZAI(
     size?: string;
   }
 ): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
-  if (!ZAI_API_KEY) {
-    return {
-      success: false,
-      error: 'Z.AI API key not configured',
-    };
-  }
-
   try {
-    const requestBody: ZAIImageGenerationRequest = {
-      model: 'cogView-4-250304',
+    const requestBody = {
       prompt: prompt,
       quality: options?.quality || 'standard',
       size: options?.size || '1024x1024',
     };
 
-    const response = await fetch(ZAI_API_URL, {
+    console.log('Calling Z.AI API route with:', requestBody);
+
+    const response = await fetch('/api/generate-image', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${ZAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
-      const errorData = (await response.json()) as ZAIError;
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
 
     const data = (await response.json()) as ZAIImageGenerationResponse;
+
+    console.log('Z.AI API response:', data);
 
     if (data.data && data.data.length > 0 && data.data[0].url) {
       return {

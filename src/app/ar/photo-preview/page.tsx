@@ -12,7 +12,8 @@ export default function PhotoPreviewPage() {
   useEffect(() => {
     // Wait for photo to be captured and saved
     const checkPhoto = async () => {
-      // Wait for any pending restoration
+      // Initialize restoration from localStorage
+      await photoService.blob.initRestore();
       await photoService.blob.waitForRestoration();
 
       // Poll for photo with timeout (max 3 seconds)
