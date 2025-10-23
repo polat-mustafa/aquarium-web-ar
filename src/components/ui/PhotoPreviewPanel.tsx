@@ -235,7 +235,7 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
                   </div>
                   <div className="space-y-2">
                     <p className="text-white font-semibold text-lg">Applying AI Style...</p>
-                    <p className="text-cyan-300 text-sm">Using Gemini AI</p>
+                    <p className="text-cyan-300 text-sm">Powered by Z.AI CogView-4</p>
                   </div>
                 </div>
               </div>
@@ -349,10 +349,10 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
             <div className="flex items-start space-x-3">
               <span className="text-2xl">🤖</span>
               <div className="flex-1 text-sm text-purple-200">
-                <p className="font-semibold mb-1">AI-Powered by Google Gemini</p>
+                <p className="font-semibold mb-1">AI-Powered by Z.AI CogView-4</p>
                 <p className="text-purple-300/80">
-                  Select a template and click "Apply AI Style" to transform your photo using advanced AI.
-                  The Gemini AI will analyze your image and apply creative style transformations!
+                  Select a template and click "Apply AI Style" to transform your photo using Z.AI's advanced image generation.
+                  The CogView-4 model will generate a brand new styled image based on your selection!
                 </p>
               </div>
             </div>

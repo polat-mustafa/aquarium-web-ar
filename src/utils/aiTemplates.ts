@@ -176,29 +176,32 @@ export function getAllCategories(): AITemplate['category'][] {
 }
 
 /**
- * Apply AI template to image using Gemini AI
+ * Apply AI template to image using Z.AI CogView-4
+ * This will generate a new styled image based on the template
  */
 export async function applyAITemplate(
   imageBlob: Blob,
-  template: AITemplate
+  template: AITemplate,
+  creatureName?: string
 ): Promise<Blob> {
   console.log('Applying AI Template:', template.name);
   console.log('Style prompt:', template.apiConfig?.stylePrompt);
 
   try {
-    // Import Gemini service dynamically
-    const { transformImageWithGemini } = await import('@/services/GeminiAIService');
+    // Import Z.AI service dynamically
+    const { transformImageWithZAI, generateStylePrompt, downloadImageAsBlob } = await import('@/services/ZAIService');
 
-    // Transform image with Gemini AI
-    const result = await transformImageWithGemini(imageBlob, template);
+    // Option 1: Use the direct transformation (uses AI to analyze original and apply style)
+    const result = await transformImageWithZAI(imageBlob, template);
 
-    if (result.success && result.transformedImageUrl) {
-      // Convert the transformed image URL back to blob
-      const response = await fetch(result.transformedImageUrl);
-      const transformedBlob = await response.blob();
+    if (result.success && result.imageUrl) {
+      console.log('✅ Z.AI transformation successful!');
+
+      // Download the generated image as blob
+      const transformedBlob = await downloadImageAsBlob(result.imageUrl);
       return transformedBlob;
     } else {
-      console.warn('AI transformation failed, returning original:', result.error);
+      console.warn('❌ Z.AI transformation failed, returning original:', result.error);
       return imageBlob;
     }
   } catch (error) {
