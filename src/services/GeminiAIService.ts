@@ -7,8 +7,8 @@ import { AITemplate } from '@/utils/aiTemplates';
 
 // IMPORTANT: API key should be stored in .env.local file
 // Create .env.local file in the root directory with:
-// NEXT_PUBLIC_GEMINI_API_KEY=your_api_key_here
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+// GEMINI_API_KEY=your_api_key_here (SECRET - DO NOT USE NEXT_PUBLIC_)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 export interface AITransformResult {
