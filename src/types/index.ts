@@ -48,6 +48,11 @@ export interface AppState {
   hashtags: string[];
   showTouchIndicator: boolean;
   touchIndicatorDuration: number;
+  // Photo capture state
+  capturedPhoto: Blob | null;
+  selectedAITemplate: string | null;
+  isCapturingPhoto: boolean;
+  showLensAnimation: boolean;
 }
 
 export interface AppActions {
@@ -70,6 +75,11 @@ export interface AppActions {
   setHashtags: (hashtags: string[]) => void;
   setShowTouchIndicator: (show: boolean) => void;
   setTouchIndicatorDuration: (duration: number) => void;
+  // Photo capture actions
+  capturePhoto: () => Promise<void>;
+  setCapturedPhoto: (photo: Blob | null) => void;
+  setSelectedAITemplate: (templateId: string | null) => void;
+  setShowLensAnimation: (show: boolean) => void;
 }
 
 export type AppStore = AppState & AppActions;

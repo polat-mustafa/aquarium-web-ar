@@ -47,6 +47,11 @@ export const useAppStore = create<AppStore>()(
       hashtags: loadFromStorage('aquarium-hashtags', ['#aquarium', '#WebAR', '#OceanMagic']),
       showTouchIndicator: loadFromStorage('aquarium-show-touch-indicator', true),
       touchIndicatorDuration: loadFromStorage('aquarium-touch-indicator-duration', 10000),
+      // Photo capture state
+      capturedPhoto: null,
+      selectedAITemplate: null,
+      isCapturingPhoto: false,
+      showLensAnimation: false,
 
       // Actions
       initializeAR: async () => {
@@ -241,6 +246,81 @@ export const useAppStore = create<AppStore>()(
       setTouchIndicatorDuration: (duration: number) => {
         saveToStorage('aquarium-touch-indicator-duration', duration);
         set({ touchIndicatorDuration: duration }, false, 'setTouchIndicatorDuration');
+      },
+
+      // Photo capture actions
+      capturePhoto: async () => {
+        const { isARInitialized, hasCameraPermission, activeCreature } = get();
+
+        if (!isARInitialized || !hasCameraPermission) {
+          console.warn('Cannot capture photo: AR not initialized or no camera permission');
+          return;
+        }
+
+        set({ isCapturingPhoto: true, showLensAnimation: true }, false, 'capturePhoto/start');
+
+        try {
+          // Import photoService dynamically to avoid circular dependencies
+          const { photoService } = await import('@/services/PhotoCaptureService');
+
+          // Initialize photo capture if not already done
+          const videoElement = document.querySelector('video');
+          if (!videoElement) {
+            throw new Error('Video element not found');
+          }
+
+          await photoService.capture.initialize(videoElement);
+
+          // Update overlay data with creature name
+          photoService.capture.updateOverlayData({
+            creatureName: activeCreature?.name,
+            timestamp: Date.now(),
+          });
+
+          // Capture the photo
+          const photoBlob = await photoService.capture.capture();
+
+          // Store the photo
+          photoService.blob.store(photoBlob, activeCreature?.name);
+
+          set(
+            {
+              capturedPhoto: photoBlob,
+              isCapturingPhoto: false,
+            },
+            false,
+            'capturePhoto/success'
+          );
+
+          // Navigate to preview page after lens animation
+          setTimeout(() => {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/ar/photo-preview';
+            }
+          }, 800); // Wait for lens animation to complete
+        } catch (error) {
+          console.error('Failed to capture photo:', error);
+          set(
+            {
+              isCapturingPhoto: false,
+              showLensAnimation: false,
+            },
+            false,
+            'capturePhoto/error'
+          );
+        }
+      },
+
+      setCapturedPhoto: (photo: Blob | null) => {
+        set({ capturedPhoto: photo }, false, 'setCapturedPhoto');
+      },
+
+      setSelectedAITemplate: (templateId: string | null) => {
+        set({ selectedAITemplate: templateId }, false, 'setSelectedAITemplate');
+      },
+
+      setShowLensAnimation: (show: boolean) => {
+        set({ showLensAnimation: show }, false, 'setShowLensAnimation');
       },
     }),
     {

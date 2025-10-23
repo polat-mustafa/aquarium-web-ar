@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { ARViewer } from '@/components/ar/ARViewer';
 import { SharePanel } from '@/components/ui/SharePanel';
 import { SpeechBubble } from '@/components/ui/SpeechBubble';
+import LensAnimation from '@/components/ar/LensAnimation';
 import { useAppStore } from '@/stores/useAppStore';
 import { galleryCreatures } from '@/utils/galleryData';
 import { MODEL_REGISTRY } from '@/utils/modelMatcher';
@@ -57,6 +58,10 @@ function ARExperienceContent() {
     showTouchIndicator,
     touchIndicatorDuration,
     hashtags,
+    capturePhoto,
+    showLensAnimation,
+    setShowLensAnimation,
+    isCapturingPhoto,
   } = useAppStore();
 
   // State for current fish fact
@@ -194,11 +199,6 @@ function ARExperienceContent() {
         position: [0, 0, -3] as [number, number, number],
         animation: 'idle' as const
       };
-
-        name: resolvedName,
-        modelPath: resolvedModelPath,
-        hasModel: !!resolvedModelPath
-      });
 
       setActiveCreature(creature);
       setShowCreaturePopup(true);
@@ -543,6 +543,38 @@ function ARExperienceContent() {
 
           {/* AR Controls - Bottom Right - Always visible */}
           <div className="absolute bottom-32 right-4 z-40 flex flex-col space-y-3 pointer-events-auto">
+            {/* Photo Capture Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isCapturingPhoto && activeCreature) {
+                  capturePhoto();
+                }
+              }}
+              disabled={isCapturingPhoto || !activeCreature}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all ${
+                isCapturingPhoto || !activeCreature
+                  ? 'bg-gradient-to-br from-gray-500 to-gray-600 opacity-50 cursor-not-allowed'
+                  : 'bg-gradient-to-br from-blue-500 to-cyan-600 hover:scale-110 active:scale-95'
+              }`}
+              aria-label="Capture Photo"
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            </button>
+
             {/* Video Recording Button */}
             <button
               onClick={(e) => {
@@ -851,6 +883,12 @@ function ARExperienceContent() {
           setRecordedVideo(null);
         }}
         creatureName={activeCreature?.name || 'sea-creature'}
+      />
+
+      {/* Lens Animation */}
+      <LensAnimation
+        isVisible={showLensAnimation}
+        onComplete={() => setShowLensAnimation(false)}
       />
     </div>
   );

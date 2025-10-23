@@ -373,6 +373,7 @@ export class RecordingManager {
         if (hasWebGLIndicators || allCanvases.length >= 2) {
           webglCanvas = canvas;
           if (!this.webglCanvasWarned) {
+            console.log('Found WebGL canvas:', {
               width: canvas.width,
               height: canvas.height,
               dataEngine: canvas.getAttribute('data-engine')
@@ -528,6 +529,7 @@ export class BlobManager {
     this.videoBlob = blob;
     this.videoUrl = URL.createObjectURL(blob);
 
+    console.log('Video stored:', {
       size: blob.size,
       type: blob.type,
       url: this.videoUrl,
