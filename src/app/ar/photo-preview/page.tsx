@@ -12,7 +12,12 @@ export default function PhotoPreviewPage() {
   useEffect(() => {
     // Wait for photo restoration from localStorage
     const checkPhoto = async () => {
+      // Wait for restoration to complete
       await photoService.blob.waitForRestoration();
+
+      // Give a small additional buffer for localStorage save to complete
+      // This handles the case where navigation happens right after lens animation
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       if (!photoService.blob.hasBlob()) {
         // No photo available, redirect back to AR page

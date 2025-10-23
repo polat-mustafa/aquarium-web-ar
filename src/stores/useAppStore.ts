@@ -280,8 +280,10 @@ export const useAppStore = create<AppStore>()(
           // Capture the photo
           const photoBlob = await photoService.capture.capture();
 
-          // Store the photo and wait for localStorage save to complete
-          await photoService.blob.store(photoBlob, activeCreature?.name);
+          // Start storing the photo to localStorage (don't wait for completion)
+          photoService.blob.store(photoBlob, activeCreature?.name).catch((error) => {
+            console.error('Failed to save photo to localStorage:', error);
+          });
 
           set(
             {
@@ -292,7 +294,7 @@ export const useAppStore = create<AppStore>()(
             'capturePhoto/success'
           );
 
-          // Navigate to preview page after lens animation
+          // Navigate to preview page immediately after lens animation completes
           setTimeout(() => {
             if (typeof window !== 'undefined') {
               window.location.href = '/ar/photo-preview';
