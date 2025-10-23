@@ -224,8 +224,14 @@ export class PhotoBlobManager {
     captureTime?: Date;
     selectedTemplate?: string;
   } = {};
+  private readonly STORAGE_KEY = 'aquarium-captured-photo';
+  private readonly METADATA_KEY = 'aquarium-photo-metadata';
+  private restorationPromise: Promise<void> | null = null;
 
-  constructor() {}
+  constructor() {
+    // Try to restore from localStorage on initialization
+    this.restorationPromise = this.restoreFromStorage();
+  }
 
   /**
    * Store photo blob and create URL
@@ -241,7 +247,63 @@ export class PhotoBlobManager {
       captureTime: new Date(),
     };
 
+    // Persist to localStorage as data URL
+    this.persistToStorage(blob);
+
     return this.photoUrl;
+  }
+
+  /**
+   * Persist photo to localStorage as data URL
+   */
+  private persistToStorage(blob: Blob): void {
+    if (typeof window === 'undefined') return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      try {
+        localStorage.setItem(this.STORAGE_KEY, reader.result as string);
+        localStorage.setItem(this.METADATA_KEY, JSON.stringify(this.metadata));
+      } catch (error) {
+        console.warn('Failed to persist photo to localStorage:', error);
+      }
+    };
+    reader.readAsDataURL(blob);
+  }
+
+  /**
+   * Restore photo from localStorage
+   */
+  private async restoreFromStorage(): Promise<void> {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const dataUrl = localStorage.getItem(this.STORAGE_KEY);
+      const metadataJson = localStorage.getItem(this.METADATA_KEY);
+
+      if (dataUrl) {
+        // Convert data URL back to blob
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        this.photoBlob = blob;
+        this.photoUrl = URL.createObjectURL(blob);
+      }
+
+      if (metadataJson) {
+        this.metadata = JSON.parse(metadataJson);
+      }
+    } catch (error) {
+      console.warn('Failed to restore from localStorage:', error);
+    }
+  }
+
+  /**
+   * Wait for restoration to complete
+   */
+  async waitForRestoration(): Promise<void> {
+    if (this.restorationPromise) {
+      await this.restorationPromise;
+    }
   }
 
   /**
@@ -303,6 +365,12 @@ export class PhotoBlobManager {
     this.photoBlob = null;
     this.photoUrl = null;
     this.metadata = {};
+
+    // Clear from localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(this.STORAGE_KEY);
+      localStorage.removeItem(this.METADATA_KEY);
+    }
   }
 }
 
