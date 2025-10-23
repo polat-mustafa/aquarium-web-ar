@@ -176,26 +176,36 @@ export function getAllCategories(): AITemplate['category'][] {
 }
 
 /**
- * Future: Function to apply AI template to image
- * This will integrate with actual AI APIs (OpenAI DALL-E, Stability AI, etc.)
+ * Apply AI template to image using Gemini AI
  */
 export async function applyAITemplate(
   imageBlob: Blob,
   template: AITemplate
 ): Promise<Blob> {
-  // TODO: Integrate with actual AI API
-  // For now, return the original image
-  // Future implementation will:
-  // 1. Upload image to AI service
-  // 2. Apply style transfer based on template.apiConfig
-  // 3. Download and return the styled image
-
-  console.log('AI Template to apply:', template.name);
+  console.log('Applying AI Template:', template.name);
   console.log('Style prompt:', template.apiConfig?.stylePrompt);
 
-  // Placeholder: Return original image
-  // In production, this would call an AI API
-  return imageBlob;
+  try {
+    // Import Gemini service dynamically
+    const { transformImageWithGemini } = await import('@/services/GeminiAIService');
+
+    // Transform image with Gemini AI
+    const result = await transformImageWithGemini(imageBlob, template);
+
+    if (result.success && result.transformedImageUrl) {
+      // Convert the transformed image URL back to blob
+      const response = await fetch(result.transformedImageUrl);
+      const transformedBlob = await response.blob();
+      return transformedBlob;
+    } else {
+      console.warn('AI transformation failed, returning original:', result.error);
+      return imageBlob;
+    }
+  } catch (error) {
+    console.error('Error applying AI template:', error);
+    // Return original image on error
+    return imageBlob;
+  }
 }
 
 /**

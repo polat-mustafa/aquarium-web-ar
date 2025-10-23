@@ -6,9 +6,11 @@ import {
   AI_TEMPLATES,
   getRandomTemplate,
   generateShareMessage,
+  applyAITemplate,
   type AITemplate,
 } from '@/utils/aiTemplates';
 import { useAppStore } from '@/stores/useAppStore';
+import { getTemplateFilters } from '@/services/GeminiAIService';
 
 interface PhotoPreviewPanelProps {
   onClose?: () => void;
@@ -16,9 +18,11 @@ interface PhotoPreviewPanelProps {
 
 export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [originalPhotoUrl, setOriginalPhotoUrl] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<AITemplate | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<AITemplate['category'] | 'all'>('all');
+  const [appliedTemplate, setAppliedTemplate] = useState<AITemplate | null>(null);
 
   const { activeCreature, setSelectedAITemplate } = useAppStore();
 
@@ -27,6 +31,7 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
     const url = photoService.blob.getUrl();
     if (url) {
       setPhotoUrl(url);
+      setOriginalPhotoUrl(url);
     }
   }, []);
 
@@ -34,6 +39,41 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
     setSelectedTemplate(template);
     setSelectedAITemplate(template.id);
     photoService.blob.setSelectedTemplate(template.id);
+  };
+
+  const handleApplyAIStyle = async () => {
+    if (!selectedTemplate) return;
+
+    const blob = photoService.blob.getBlob();
+    if (!blob) return;
+
+    setIsProcessing(true);
+
+    try {
+      // Apply AI transformation using Gemini
+      const transformedBlob = await applyAITemplate(blob, selectedTemplate);
+
+      // Create URL for transformed image
+      const transformedUrl = URL.createObjectURL(transformedBlob);
+      setPhotoUrl(transformedUrl);
+      setAppliedTemplate(selectedTemplate);
+
+      // Update the stored blob
+      await photoService.blob.store(transformedBlob, activeCreature?.name);
+    } catch (error) {
+      console.error('Failed to apply AI style:', error);
+      alert('Failed to apply AI style. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleResetToOriginal = () => {
+    if (originalPhotoUrl) {
+      setPhotoUrl(originalPhotoUrl);
+      setAppliedTemplate(null);
+      setSelectedTemplate(null);
+    }
   };
 
   const handleRandomTemplate = () => {
@@ -171,16 +211,68 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
               </div>
             )}
 
-            {/* Selected Template Indicator */}
-            {selectedTemplate && (
+            {/* Selected/Applied Template Indicator */}
+            {(selectedTemplate || appliedTemplate) && (
               <div className="absolute top-4 left-4 bg-black/80 backdrop-blur-sm px-4 py-2 rounded-full border border-cyan-500/50">
                 <div className="flex items-center space-x-2">
-                  <span className="text-2xl">{selectedTemplate.icon}</span>
-                  <span className="text-sm font-semibold">{selectedTemplate.name}</span>
+                  <span className="text-2xl">{(appliedTemplate || selectedTemplate)?.icon}</span>
+                  <span className="text-sm font-semibold">
+                    {appliedTemplate ? `✨ ${appliedTemplate.name}` : selectedTemplate?.name}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Processing Overlay */}
+            {isProcessing && (
+              <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center">
+                <div className="text-center space-y-4">
+                  <div className="relative inline-block">
+                    <div className="w-20 h-20 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-3xl">🎨</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-white font-semibold text-lg">Applying AI Style...</p>
+                    <p className="text-cyan-300 text-sm">Using Gemini AI</p>
+                  </div>
                 </div>
               </div>
             )}
           </div>
+
+          {/* Apply AI Style Button */}
+          {selectedTemplate && !appliedTemplate && (
+            <div className="flex justify-center">
+              <button
+                onClick={handleApplyAIStyle}
+                disabled={isProcessing}
+                className="bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 hover:from-purple-600 hover:to-rose-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-3"
+              >
+                <span>✨</span>
+                <span>Apply AI Style</span>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Reset Button */}
+          {appliedTemplate && (
+            <div className="flex justify-center">
+              <button
+                onClick={handleResetToOriginal}
+                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white px-6 py-3 rounded-full font-semibold shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Reset to Original</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Category Filter */}
@@ -251,16 +343,16 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
           </div>
         </div>
 
-        {/* AI Processing Note */}
+        {/* AI Enhancement Info */}
         <div className="max-w-2xl mx-auto">
-          <div className="bg-blue-900/30 border border-blue-500/30 rounded-xl p-4">
+          <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 border border-purple-500/30 rounded-xl p-4">
             <div className="flex items-start space-x-3">
-              <span className="text-2xl">💡</span>
-              <div className="flex-1 text-sm text-blue-200">
-                <p className="font-semibold mb-1">Future AI Enhancement</p>
-                <p className="text-blue-300/80">
-                  Template selection is ready! AI image processing will be enabled soon with
-                  integration to AI APIs like DALL-E, Stable Diffusion, and Midjourney.
+              <span className="text-2xl">🤖</span>
+              <div className="flex-1 text-sm text-purple-200">
+                <p className="font-semibold mb-1">AI-Powered by Google Gemini</p>
+                <p className="text-purple-300/80">
+                  Select a template and click "Apply AI Style" to transform your photo using advanced AI.
+                  The Gemini AI will analyze your image and apply creative style transformations!
                 </p>
               </div>
             </div>
