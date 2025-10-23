@@ -294,12 +294,7 @@ export const useAppStore = create<AppStore>()(
             'capturePhoto/success'
           );
 
-          // Navigate to preview page immediately after lens animation completes
-          setTimeout(() => {
-            if (typeof window !== 'undefined') {
-              window.location.href = '/ar/photo-preview';
-            }
-          }, 800); // Wait for lens animation to complete
+          // Note: Navigation is now handled by the component using Next.js router
         } catch (error) {
           console.error('Failed to capture photo:', error);
           set(

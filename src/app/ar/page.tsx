@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, Suspense, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ARViewer } from '@/components/ar/ARViewer';
 import { SharePanel } from '@/components/ui/SharePanel';
 import { SpeechBubble } from '@/components/ui/SpeechBubble';
@@ -18,6 +18,7 @@ import { videoService } from '@/services/VideoRecordingService';
 function ARExperienceContent() {
   // CRITICAL FIX: Extract creature ID once with useMemo to prevent infinite re-renders
   const searchParams = useSearchParams();
+  const router = useRouter();
   const creatureIdFromUrl = useMemo(() => searchParams.get('creature'), [searchParams]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -63,6 +64,19 @@ function ARExperienceContent() {
     setShowLensAnimation,
     isCapturingPhoto,
   } = useAppStore();
+
+  // Custom photo capture handler that uses Next.js router
+  const handlePhotoCapture = useCallback(async () => {
+    if (!activeCreature) return;
+
+    // Call the store action and wait for it to complete
+    await capturePhoto();
+
+    // Navigate using Next.js router immediately after lens animation
+    setTimeout(() => {
+      router.push('/ar/photo-preview');
+    }, 800);
+  }, [activeCreature, capturePhoto, router]);
 
   // State for current fish fact
   const [currentFact, setCurrentFact] = useState<ReturnType<typeof getRandomFishFact>>(null);
@@ -548,7 +562,7 @@ function ARExperienceContent() {
               onClick={(e) => {
                 e.stopPropagation();
                 if (!isCapturingPhoto && activeCreature) {
-                  capturePhoto();
+                  handlePhotoCapture();
                 }
               }}
               disabled={isCapturingPhoto || !activeCreature}
