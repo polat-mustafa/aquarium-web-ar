@@ -34,9 +34,27 @@ export default function PhotoPreviewPage() {
   if (isChecking) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-        <div className="text-white text-center space-y-4">
-          <div className="text-6xl animate-pulse">📸</div>
-          <p className="text-lg">Loading photo...</p>
+        <div className="text-white text-center space-y-6 px-4">
+          {/* Animated Camera Icon */}
+          <div className="relative inline-block">
+            <div className="absolute inset-0 bg-cyan-500/20 rounded-full blur-2xl animate-pulse"></div>
+            <div className="relative text-8xl animate-bounce">📸</div>
+          </div>
+
+          {/* Loading Text */}
+          <div className="space-y-2">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-300 via-blue-400 to-cyan-300 bg-clip-text text-transparent">
+              Loading Photo
+            </h2>
+            <p className="text-slate-300 text-lg">Preparing your AR capture...</p>
+          </div>
+
+          {/* Loading Animation */}
+          <div className="flex justify-center items-center space-x-2">
+            <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce"></div>
+            <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+            <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          </div>
         </div>
       </div>
     );

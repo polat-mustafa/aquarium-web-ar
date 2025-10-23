@@ -60,25 +60,30 @@ export class PhotoCaptureManager {
     if (!this.overlayData.creatureName) return;
 
     const padding = 20;
-    const bottomY = this.canvas!.height - padding - 20;
+    const emojiSize = 28;
+    const textPadding = 20;
+    const emojiPadding = 12;
 
     ctx.save();
 
-    // Semi-transparent background
+    // Measure text to calculate proper background width
+    ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
     const textMetrics = ctx.measureText(this.overlayData.creatureName);
-    const bgWidth = textMetrics.width + 40;
+
+    // Calculate background dimensions with proper spacing for text + emoji
+    const bgWidth = textMetrics.width + textPadding * 2 + emojiSize + emojiPadding;
     const bgHeight = 50;
     const bgX = padding;
     const bgY = this.canvas!.height - padding - bgHeight;
 
     // Gradient background
     const gradient = ctx.createLinearGradient(bgX, bgY, bgX + bgWidth, bgY + bgHeight);
-    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.8)');
-    gradient.addColorStop(1, 'rgba(147, 51, 234, 0.8)');
+    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.9)');
+    gradient.addColorStop(1, 'rgba(147, 51, 234, 0.9)');
 
     ctx.fillStyle = gradient;
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-    ctx.shadowBlur = 15;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+    ctx.shadowBlur = 20;
     this.roundRect(ctx, bgX, bgY, bgWidth, bgHeight, 25);
     ctx.fill();
 
@@ -91,11 +96,12 @@ export class PhotoCaptureManager {
     ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(this.overlayData.creatureName, bgX + 20, bgY + bgHeight / 2);
+    ctx.fillText(this.overlayData.creatureName, bgX + textPadding, bgY + bgHeight / 2);
 
-    // Draw small fish emoji
-    ctx.font = '24px serif';
-    ctx.fillText('🐠', bgX + bgWidth - 35, bgY + bgHeight / 2);
+    // Draw fish emoji with proper positioning
+    ctx.font = `${emojiSize}px serif`;
+    ctx.textAlign = 'right';
+    ctx.fillText('🐠', bgX + bgWidth - emojiPadding, bgY + bgHeight / 2);
 
     ctx.restore();
   }
