@@ -66,16 +66,17 @@ function ARExperienceContent() {
   } = useAppStore();
 
   // Custom photo capture handler that uses Next.js router
-  const handlePhotoCapture = useCallback(async () => {
+  const handlePhotoCapture = useCallback(() => {
     if (!activeCreature) return;
 
-    // Call the store action and wait for it to complete
-    await capturePhoto();
+    // Start the photo capture process (don't wait)
+    capturePhoto();
 
-    // Navigate using Next.js router immediately after lens animation
+    // Navigate immediately to show loading screen
+    // The photo will be captured and saved while loading screen is showing
     setTimeout(() => {
       router.push('/ar/photo-preview');
-    }, 800);
+    }, 100); // Navigate almost immediately after button press
   }, [activeCreature, capturePhoto, router]);
 
   // State for current fish fact

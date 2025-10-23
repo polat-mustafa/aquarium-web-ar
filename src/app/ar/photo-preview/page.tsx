@@ -10,21 +10,30 @@ export default function PhotoPreviewPage() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Wait for photo restoration from localStorage
+    // Wait for photo to be captured and saved
     const checkPhoto = async () => {
-      // Wait for restoration to complete
+      // Wait for any pending restoration
       await photoService.blob.waitForRestoration();
 
-      // Give a small additional buffer for localStorage save to complete
-      // This handles the case where navigation happens right after lens animation
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Poll for photo with timeout (max 3 seconds)
+      const maxAttempts = 30; // 30 attempts * 100ms = 3 seconds
+      let attempts = 0;
 
-      if (!photoService.blob.hasBlob()) {
-        // No photo available, redirect back to AR page
-        router.push('/ar');
-      } else {
-        setIsChecking(false);
+      while (attempts < maxAttempts) {
+        if (photoService.blob.hasBlob()) {
+          // Photo is ready!
+          setIsChecking(false);
+          return;
+        }
+
+        // Wait 100ms before checking again
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
       }
+
+      // If still no photo after 3 seconds, redirect back
+      console.warn('Photo not found after timeout, redirecting...');
+      router.push('/ar');
     };
 
     checkPhoto();
