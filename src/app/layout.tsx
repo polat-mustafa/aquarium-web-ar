@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     'WebAR',
   ],
   authors: [{ name: 'Aquarium' }],
-  viewport: 'width=device-width, initial-scale=1, user-scalable=no',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover',
   themeColor: '#1e40af',
   manifest: '/manifest.json',
   openGraph: {
@@ -49,7 +49,7 @@ export default function RootLayout({
       <head>
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1, user-scalable=no"
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
         />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
@@ -57,6 +57,7 @@ export default function RootLayout({
           content="black-translucent"
         />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="format-detection" content="telephone=no" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

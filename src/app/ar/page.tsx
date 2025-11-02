@@ -399,27 +399,56 @@ function ARExperienceContent() {
     }
   }, []);
 
-  // Fullscreen handler
+  // Fullscreen handler with iOS/WebKit support
   const toggleFullscreen = useCallback(() => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => {
+    const docEl = document.documentElement as any;
+    const isFullscreen = document.fullscreenElement || (document as any).webkitFullscreenElement;
+
+    if (!isFullscreen) {
+      // Try standard API first, then WebKit for iOS Safari
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().then(() => {
+          setIsFullscreen(true);
+        }).catch((err) => {
+          console.log('Fullscreen request failed:', err);
+        });
+      } else if (docEl.webkitRequestFullscreen) {
+        // iOS Safari
+        docEl.webkitRequestFullscreen();
         setIsFullscreen(true);
-      }).catch((err) => {
-      });
+      } else if (docEl.webkitEnterFullscreen) {
+        // iOS video element fullscreen
+        docEl.webkitEnterFullscreen();
+        setIsFullscreen(true);
+      }
     } else {
-      document.exitFullscreen().then(() => {
+      // Exit fullscreen with iOS/WebKit support
+      if (document.exitFullscreen) {
+        document.exitFullscreen().then(() => {
+          setIsFullscreen(false);
+        });
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
         setIsFullscreen(false);
-      });
+      }
     }
   }, []);
 
-  // Listen for fullscreen changes
+  // Listen for fullscreen changes with iOS/WebKit support
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const isFullscreen = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+      setIsFullscreen(isFullscreen);
     };
+
+    // Add listeners for both standard and WebKit events
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
   }, []);
 
   // Update fish fact when speech bubble is shown
@@ -469,7 +498,11 @@ function ARExperienceContent() {
         autoPlay
         playsInline
         muted
-        style={{ transform: 'scaleX(-1)' }}
+        {...({ 'webkit-playsinline': 'true' } as any)}
+        style={{
+          transform: 'scaleX(-1)',
+          WebkitTransform: 'scaleX(-1)'
+        }}
       />
 
       {/* Recording Timer - Show when recording */}
@@ -566,12 +599,16 @@ function ARExperienceContent() {
                   handlePhotoCapture();
                 }
               }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+              }}
               disabled={isCapturingPhoto || !activeCreature}
               className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all ${
                 isCapturingPhoto || !activeCreature
                   ? 'bg-gradient-to-br from-gray-500 to-gray-600 opacity-50 cursor-not-allowed'
                   : 'bg-gradient-to-br from-blue-500 to-cyan-600 hover:scale-110 active:scale-95'
               }`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
               aria-label="Capture Photo"
             >
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -600,11 +637,15 @@ function ARExperienceContent() {
                   startRecording();
                 }
               }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+              }}
               className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95 ${
                 isRecording
                   ? 'bg-gradient-to-br from-red-500 to-red-600 animate-pulse'
                   : 'bg-gradient-to-br from-red-500 to-red-600'
               }`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
               aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
             >
               {isRecording ? (
@@ -620,7 +661,11 @@ function ARExperienceContent() {
                 e.stopPropagation();
                 toggleFullscreen();
               }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+              }}
               className="w-14 h-14 bg-gradient-to-br from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all hover:scale-110 active:scale-95"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
               aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
             >
               {isFullscreen ? (
@@ -685,6 +730,10 @@ function ARExperienceContent() {
                         window.location.href = 'https://aquarium-web-ar.vercel.app/gallery/';
                       }
                     }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                    }}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
                     className="group relative bg-gradient-to-r from-cyan-600/90 to-blue-600/90 backdrop-blur-sm border border-cyan-500/50 text-white px-4 py-2.5 rounded-xl font-medium transition-all duration-300 hover:from-cyan-500/90 hover:to-blue-500/90 hover:border-cyan-400/50 hover:shadow-xl hover:shadow-cyan-500/20 hover:scale-105 active:scale-95"
                   >
                     <div className="flex items-center space-x-2">
@@ -701,6 +750,10 @@ function ARExperienceContent() {
                         window.history.back();
                       }
                     }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                    }}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
                     className="group relative bg-gradient-to-r from-slate-800/90 to-slate-700/90 backdrop-blur-sm border border-slate-600/50 text-white p-2.5 rounded-xl font-medium transition-all duration-300 hover:from-slate-700/90 hover:to-slate-600/90 hover:border-slate-500/50 hover:shadow-xl hover:scale-105 active:scale-95"
                     aria-label="Go back"
                   >
@@ -731,6 +784,10 @@ function ARExperienceContent() {
                 <p className="text-slate-300 leading-relaxed">{cameraError}</p>
                 <button
                   onClick={() => window.location.reload()}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                  }}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
                   className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-95"
                 >
                   Retry Camera Access
