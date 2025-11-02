@@ -8,6 +8,7 @@ import { SpeechBubble } from '@/components/ui/SpeechBubble';
 import LensAnimation from '@/components/ar/LensAnimation';
 import { PrivacyModal } from '@/components/ui/PrivacyModal';
 import { useAppStore } from '@/stores/useAppStore';
+import { useSettings } from '@/contexts/SettingsContext';
 import { galleryCreatures } from '@/utils/galleryData';
 import { MODEL_REGISTRY } from '@/utils/modelMatcher';
 import { initializeQRDetection, createCameraStream, stopCameraStream } from '@/utils/qrDetection';
@@ -45,6 +46,9 @@ function ARExperienceContent() {
   // Privacy Modal State
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+
+  // Get language from Settings context
+  const { language } = useSettings();
 
   const {
     activeCreature,
@@ -119,6 +123,12 @@ function ARExperienceContent() {
     router.push('/');
   }, [router]);
 
+  // Sync Settings language with AR preferredLanguage
+  useEffect(() => {
+    if (language !== preferredLanguage) {
+      setPreferredLanguage(language);
+    }
+  }, [language, preferredLanguage, setPreferredLanguage]);
 
   // Initialize AR from store (once) - ONLY on first mount
   useEffect(() => {
@@ -504,7 +514,7 @@ function ARExperienceContent() {
     const overlayData = {
       bubbles: bubbles,
       speechBubble: enableSpeechBubbles && showSpeechBubble && currentFact ? {
-        text: currentFact[preferredLanguage],
+        text: currentFact[language],
         x: window.innerWidth / 2,
         y: window.innerHeight * 0.15,
       } : undefined,
@@ -512,7 +522,7 @@ function ARExperienceContent() {
     };
 
     videoService.recording.updateOverlayData(overlayData);
-  }, [isRecording, bubbles, showSpeechBubble, currentFact, preferredLanguage, enableSpeechBubbles]);
+  }, [isRecording, bubbles, showSpeechBubble, currentFact, language, enableSpeechBubbles]);
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 relative">
@@ -607,7 +617,7 @@ function ARExperienceContent() {
             <div className="absolute top-[15%] left-1/2 transform -translate-x-1/2 z-40 pointer-events-auto">
               <SpeechBubble
                 fact={currentFact}
-                language={preferredLanguage}
+                language={language}
                 onLanguageChange={() => {}}
                 onClose={() => setShowSpeechBubble(false)}
               />

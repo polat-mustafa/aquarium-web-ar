@@ -103,6 +103,156 @@ export const fishFactsDatabase: Record<string, FishData> = {
       }
     ]
   },
+  'shark': {
+    name: 'Shark',
+    facts: [
+      {
+        en: "Sharks have been around for over 400 million years!",
+        tr: "Köpekbalıkları 400 milyon yıldan fazladır var!",
+        pl: "Rekiny istnieją od ponad 400 milionów lat!"
+      },
+      {
+        en: "Sharks can detect a single drop of blood in an Olympic-sized pool!",
+        tr: "Köpekbalıkları olimpik havuzdaki tek damla kanı algılayabilir!",
+        pl: "Rekiny mogą wykryć pojedynczą kroplę krwi w basenie olimpijskim!"
+      },
+      {
+        en: "Sharks never run out of teeth - they grow new ones constantly!",
+        tr: "Köpekbalıklarının dişleri asla bitmez - sürekli yenileri çıkar!",
+        pl: "Rekiny nigdy nie wyczerpują zębów - stale wyrastają im nowe!"
+      },
+      {
+        en: "Some sharks can live up to 500 years!",
+        tr: "Bazı köpekbalıkları 500 yıla kadar yaşayabilir!",
+        pl: "Niektóre rekiny mogą żyć do 500 lat!"
+      }
+    ]
+  },
+  'dolphin': {
+    name: 'Dolphin',
+    facts: [
+      {
+        en: "Dolphins are one of the smartest animals on Earth!",
+        tr: "Yunuslar Dünya'daki en akıllı hayvanlardan biridir!",
+        pl: "Delfiny są jednymi z najmądrzejszych zwierząt na Ziemi!"
+      },
+      {
+        en: "Dolphins sleep with one eye open!",
+        tr: "Yunuslar bir göz açık uyurlar!",
+        pl: "Delfiny śpią z jednym otwartym okiem!"
+      },
+      {
+        en: "Dolphins have their own signature whistle that acts like a name!",
+        tr: "Yunusların isim gibi davranan kendilerine özgü ıslıkları vardır!",
+        pl: "Delfiny mają swój charakterystyczny gwizd, który działa jak imię!"
+      },
+      {
+        en: "Dolphins can recognize themselves in a mirror!",
+        tr: "Yunuslar aynada kendilerini tanıyabilirler!",
+        pl: "Delfiny potrafią rozpoznać siebie w lustrze!"
+      }
+    ]
+  },
+  'whale': {
+    name: 'Whale',
+    facts: [
+      {
+        en: "Blue whales are the largest animals ever to exist on Earth!",
+        tr: "Mavi balinalar Dünya'da yaşamış en büyük hayvanlardır!",
+        pl: "Płetwale błękitne to największe zwierzęta, jakie kiedykolwiek istniały na Ziemi!"
+      },
+      {
+        en: "A whale's heart can weigh as much as a car!",
+        tr: "Bir balinanın kalbi bir araba kadar ağır olabilir!",
+        pl: "Serce wieloryba może ważyć tyle co samochód!"
+      },
+      {
+        en: "Whales can hold their breath for over 90 minutes!",
+        tr: "Balinalar 90 dakikadan fazla nefeslerini tutabilirler!",
+        pl: "Wieloryby mogą wstrzymywać oddech przez ponad 90 minut!"
+      },
+      {
+        en: "Humpback whales sing complex songs that can last for hours!",
+        tr: "Kambur balinalar saatlerce sürebilen karmaşık şarkılar söylerler!",
+        pl: "Humbaki śpiewają złożone pieśni, które mogą trwać godzinami!"
+      }
+    ]
+  },
+  'octopus': {
+    name: 'Octopus',
+    facts: [
+      {
+        en: "Octopuses have three hearts and blue blood!",
+        tr: "Ahtapotların üç kalbi ve mavi kanı vardır!",
+        pl: "Ośmiornice mają trzy serca i niebieską krew!"
+      },
+      {
+        en: "An octopus can squeeze through any hole larger than its beak!",
+        tr: "Bir ahtapot gagasından büyük her delikten geçebilir!",
+        pl: "Ośmiornica może przecisnąć się przez każdą dziurę większą od jej dziobu!"
+      },
+      {
+        en: "Octopuses can change color in less than a second!",
+        tr: "Ahtapotlar bir saniyeden kısa sürede renk değiştirebilirler!",
+        pl: "Ośmiornice mogą zmieniać kolor w mniej niż sekundę!"
+      },
+      {
+        en: "Octopuses can taste with their arms!",
+        tr: "Ahtapotlar kollarıyla tat alabilirler!",
+        pl: "Ośmiornice mogą smakować swoimi ramionami!"
+      }
+    ]
+  },
+  'turtle': {
+    name: 'Sea Turtle',
+    facts: [
+      {
+        en: "Sea turtles have been around for over 100 million years!",
+        tr: "Deniz kaplumbağaları 100 milyon yıldan fazladır var!",
+        pl: "Żółwie morskie istnieją od ponad 100 milionów lat!"
+      },
+      {
+        en: "Female sea turtles return to the same beach where they were born to lay eggs!",
+        tr: "Dişi deniz kaplumbağaları yumurtlamak için doğdukları kumsala geri dönerler!",
+        pl: "Samice żółwi morskich wracają na tę samą plażę, na której się urodziły, aby złożyć jaja!"
+      },
+      {
+        en: "Sea turtles can hold their breath for up to 7 hours while sleeping!",
+        tr: "Deniz kaplumbağaları uyurken 7 saate kadar nefeslerini tutabilirler!",
+        pl: "Żółwie morskie mogą wstrzymywać oddech przez 7 godzin podczas snu!"
+      },
+      {
+        en: "Some sea turtles can live over 100 years!",
+        tr: "Bazı deniz kaplumbağaları 100 yıldan fazla yaşayabilir!",
+        pl: "Niektóre żółwie morskie mogą żyć ponad 100 lat!"
+      }
+    ]
+  },
+  'clownfish': {
+    name: 'Clownfish',
+    facts: [
+      {
+        en: "Clownfish are immune to sea anemone stings!",
+        tr: "Palyaço balıkları denizanası sokmasından etkilenmez!",
+        pl: "Błazenki są odporne na ukłucia ukwiałów!"
+      },
+      {
+        en: "All clownfish are born male, but some change to female!",
+        tr: "Tüm palyaço balıkları erkek doğar, ancak bazıları dişiye dönüşür!",
+        pl: "Wszystkie błazenki rodzą się jako samce, ale niektóre zmieniają się w samice!"
+      },
+      {
+        en: "Clownfish make clicking sounds to communicate!",
+        tr: "Palyaço balıkları iletişim kurmak için tıklama sesleri çıkarır!",
+        pl: "Błazenki wydają klikające dźwięki, aby się komunikować!"
+      },
+      {
+        en: "Clownfish can live up to 10 years in the wild!",
+        tr: "Palyaço balıkları doğada 10 yıla kadar yaşayabilir!",
+        pl: "Błazenki mogą żyć do 10 lat na wolności!"
+      }
+    ]
+  },
   'generic-fish': {
     name: 'Ocean Fish',
     facts: [
