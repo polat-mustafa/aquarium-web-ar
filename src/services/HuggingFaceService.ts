@@ -6,8 +6,9 @@
 
 import { AITemplate } from '@/utils/aiTemplates';
 
-// Hugging Face API Configuration
-const HF_API_URL = 'https://api-inference.huggingface.co/models';
+// Hugging Face API Configuration - NEW Inference Providers API (Nov 2025)
+// Migrated from deprecated api-inference.huggingface.co to router.huggingface.co
+const HF_API_URL = 'https://router.huggingface.co/hf-inference';
 const HF_API_KEY = process.env.HUGGINGFACE_API_KEY || process.env.NEXT_PUBLIC_HUGGINGFACE_API_KEY || '';
 
 // Free models for each style - these are publicly available

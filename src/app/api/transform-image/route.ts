@@ -58,8 +58,9 @@ export async function POST(request: NextRequest) {
     const imageBuffer = await imageFile.arrayBuffer();
     const imageData = new Uint8Array(imageBuffer);
 
-    // Call Hugging Face Inference API with IMAGE + PROMPT (image-to-image)
-    const apiUrl = `https://api-inference.huggingface.co/models/${modelConfig.model}`;
+    // Call NEW Hugging Face Inference Providers API (Nov 2025 migration)
+    // Migrated from deprecated api-inference.huggingface.co to router.huggingface.co
+    const apiUrl = `https://router.huggingface.co/hf-inference/${modelConfig.model}`;
 
     const headers: Record<string, string> = {};
 
