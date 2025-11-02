@@ -26,9 +26,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { creatureName = 'sea creature', style = 'cinematic' } = body;
+    const { creatureName = 'sea creature', style = 'cinematic', photoDataUrl } = body;
 
     console.log(`🎬 Generating ${style} video for ${creatureName}...`);
+    console.log(`📸 Photo provided: ${photoDataUrl ? 'Yes' : 'No'}`);
 
     // Initialize Replicate client
     const replicate = new Replicate({
@@ -40,11 +41,20 @@ export async function POST(request: NextRequest) {
 
     console.log('📝 Prompt:', prompt);
 
+    // Prepare input with photo as first frame
+    const input: any = {
+      prompt: prompt,
+    };
+
+    // Add photo as first frame if provided
+    if (photoDataUrl) {
+      input.first_frame_image = photoDataUrl;
+      console.log('🖼️ Using captured photo as first frame');
+    }
+
     // Run video generation
     const output = await replicate.run('minimax/video-01', {
-      input: {
-        prompt: prompt,
-      },
+      input,
     }) as any;
 
     console.log('✅ Video generation complete!');

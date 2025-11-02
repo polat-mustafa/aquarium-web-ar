@@ -8,6 +8,7 @@ export interface VideoGenerationOptions {
   creatureName?: string;
   style?: 'cinematic' | 'documentary' | 'anime' | 'cartoon' | 'realistic';
   duration?: number; // seconds (default: 6)
+  photoDataUrl?: string; // Base64 data URL of captured photo
 }
 
 export interface VideoGenerationResult {
@@ -25,9 +26,12 @@ export async function generateVideoAnimation(
   options: VideoGenerationOptions = {}
 ): Promise<VideoGenerationResult> {
   try {
-    const { creatureName = 'sea creature', style = 'cinematic' } = options;
+    const { creatureName = 'sea creature', style = 'cinematic', photoDataUrl } = options;
 
     console.log(`🎬 Generating ${style} video animation for ${creatureName}...`);
+    if (photoDataUrl) {
+      console.log('📸 Using captured photo as input');
+    }
 
     // Call API route
     const response = await fetch('/api/generate-video', {
@@ -38,6 +42,7 @@ export async function generateVideoAnimation(
       body: JSON.stringify({
         creatureName,
         style,
+        photoDataUrl,
       }),
     });
 
@@ -66,36 +71,22 @@ export async function generateVideoAnimation(
 
 /**
  * Generate cinematic prompt for aquarium animation
+ * These prompts instruct the AI to animate the PROVIDED IMAGE, not create new content
  */
 export function generateAquariumPrompt(
   creatureName: string,
   style: 'cinematic' | 'documentary' | 'anime' | 'cartoon' | 'realistic'
 ): string {
   const stylePrompts: Record<typeof style, string> = {
-    cinematic: `Cinematic underwater scene: A majestic ${creatureName} swimming gracefully through crystal-clear ocean water.
-Dramatic lighting rays penetrate from the surface above, creating ethereal light beams.
-The creature moves elegantly with flowing fins, surrounded by gentle bubbles and coral formations in the background.
-Professional cinematography, smooth camera movement following the creature, 4K quality, nature documentary style.`,
+    cinematic: `Transform this image into a cinematic underwater scene. Keep all subjects and elements from the original image exactly as they appear. Add subtle movement: gentle swimming motions, flowing water, floating bubbles, and dramatic light rays penetrating from above. Smooth camera work, professional cinematography, 4K quality. Preserve the original composition and subjects.`,
 
-    documentary: `BBC nature documentary style: A ${creatureName} in its natural habitat, swimming through a vibrant coral reef ecosystem.
-Natural lighting, educational perspective, showing the creature's natural behavior and movements.
-Crystal clear water, tropical fish in background, realistic ocean environment.
-National Geographic quality, smooth and stable footage.`,
+    documentary: `Transform this image into a nature documentary scene. Maintain all subjects and elements from the original image. Add natural movements: realistic swimming behavior, gentle water currents, small bubbles rising. BBC/National Geographic documentary style with smooth, stable footage. Keep the original scene intact with subtle, lifelike animation.`,
 
-    anime: `Anime style animation: A beautiful ${creatureName} swimming through a magical underwater world.
-Vibrant colors, dramatic lighting effects, sparkles and glowing particles in the water.
-Fluid animation with expressive movements, Studio Ghibli inspired, dreamy atmosphere with soft focus backgrounds.
-Japanese animation style, enchanting and whimsical.`,
+    anime: `Transform this image into anime-style animation. Keep all subjects from the original image but add anime aesthetics: vibrant colors, sparkles, glowing particles in water, dreamy lighting effects. Studio Ghibli inspired fluid movements. Maintain the original composition while adding magical, whimsical animation style. Preserve all people and objects from the photo.`,
 
-    cartoon: `Cartoon animation style: A friendly, cute ${creatureName} swimming playfully through colorful ocean waters.
-Bright, saturated colors, smooth movements, Disney/Pixar animation quality.
-Cheerful atmosphere with bubbles and smiling fish friends in the background.
-Family-friendly, adorable character design, bouncy and energetic movements.`,
+    cartoon: `Transform this image into cartoon animation. Keep all subjects from the original image with cartoon styling: bright saturated colors, playful movements, bouncy animation. Disney/Pixar quality with cheerful atmosphere, bubbles, and smooth movements. Preserve everyone and everything in the original photo with family-friendly cartoon treatment.`,
 
-    realistic: `Ultra-realistic underwater footage: A ${creatureName} swimming naturally in clear ocean water.
-Photorealistic quality, natural lighting, authentic marine environment.
-Professional underwater cinematography, showcasing the creature's true colors and graceful movements.
-IMAX documentary quality, crystal clear water, natural behavior.`,
+    realistic: `Transform this image into ultra-realistic underwater footage. Preserve all subjects and elements exactly as they appear. Add photorealistic water movement, natural lighting effects, gentle currents, rising bubbles. IMAX documentary quality with crystal clear water. Keep the original scene with subtle, natural animation. Maintain all people and objects.`,
   };
 
   return stylePrompts[style];

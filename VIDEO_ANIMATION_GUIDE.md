@@ -171,10 +171,19 @@ Server-side API at `/api/generate-video`:
 ```typescript
 import { generateVideoAnimation } from '@/services/ReplicateVideoService';
 
-// Generate video
+// Get captured photo as data URL
+const photoBlob = photoService.blob.getBlob();
+const photoDataUrl = await new Promise<string>((resolve) => {
+  const reader = new FileReader();
+  reader.onloadend = () => resolve(reader.result as string);
+  reader.readAsDataURL(photoBlob);
+});
+
+// Generate video using the captured photo
 const result = await generateVideoAnimation({
   creatureName: 'Clownfish',
   style: 'cinematic',
+  photoDataUrl, // The captured AR photo
 });
 
 if (result.success) {
@@ -183,20 +192,22 @@ if (result.success) {
 }
 ```
 
+**Important:** The video now uses the captured photo as the first frame, so the generated video will preserve all subjects and elements from your AR photo!
+
 ## 📊 Prompt Engineering
 
-Each style has a carefully crafted prompt:
+Each style has a carefully crafted prompt designed to **preserve the captured photo** while adding animation:
 
 **Cinematic Example:**
 ```
-Cinematic underwater scene: A majestic Clownfish swimming gracefully
-through crystal-clear ocean water. Dramatic lighting rays penetrate
-from the surface above, creating ethereal light beams. The creature
-moves elegantly with flowing fins, surrounded by gentle bubbles and
-coral formations in the background. Professional cinematography,
-smooth camera movement following the creature, 4K quality, nature
-documentary style.
+Transform this image into a cinematic underwater scene. Keep all subjects
+and elements from the original image exactly as they appear. Add subtle
+movement: gentle swimming motions, flowing water, floating bubbles, and
+dramatic light rays penetrating from above. Smooth camera work, professional
+cinematography, 4K quality. Preserve the original composition and subjects.
 ```
+
+**Key Principle:** All prompts instruct the AI to maintain the original photo content (people, objects, scene) while adding cinematic animation effects. This ensures the video is based on YOUR captured AR photo, not a random generated scene.
 
 ## 🐛 Error Handling
 

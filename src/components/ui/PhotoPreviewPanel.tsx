@@ -45,9 +45,27 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
     }, 500);
 
     try {
+      // Get the captured photo blob
+      const photoBlob = photoService.blob.getBlob();
+      let photoDataUrl: string | undefined;
+
+      if (photoBlob) {
+        // Convert blob to data URL for API
+        photoDataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(photoBlob);
+        });
+        console.log('📸 Sending captured photo with video request');
+      } else {
+        console.warn('⚠️ No photo blob found, generating without image');
+      }
+
       const result = await generateVideoAnimation({
         creatureName: activeCreature.name,
         style: selectedStyle,
+        photoDataUrl,
       });
 
       clearInterval(progressInterval);
