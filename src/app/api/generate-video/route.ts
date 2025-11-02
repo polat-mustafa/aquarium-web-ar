@@ -2,13 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import Replicate from 'replicate';
 import { generateAquariumPrompt } from '@/services/ReplicateVideoService';
 
-const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN || '';
-
 export async function POST(request: NextRequest) {
   try {
+    // Read token from environment at runtime
+    const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
+
+    console.log('🔍 Environment check:', {
+      tokenExists: !!REPLICATE_API_TOKEN,
+      tokenLength: REPLICATE_API_TOKEN?.length || 0,
+      tokenPrefix: REPLICATE_API_TOKEN?.substring(0, 10) || 'undefined',
+      allEnvKeys: Object.keys(process.env).filter(k => k.includes('REPLICATE')),
+    });
+
     if (!REPLICATE_API_TOKEN) {
+      console.error('❌ No REPLICATE_API_TOKEN found in environment');
       return NextResponse.json(
-        { error: 'Replicate API token not configured' },
+        {
+          error: 'Replicate API token not configured',
+          debug: 'Environment variable REPLICATE_API_TOKEN is missing. Please restart the dev server after setting .env.local'
+        },
         { status: 500 }
       );
     }
