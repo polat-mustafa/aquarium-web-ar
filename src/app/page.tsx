@@ -44,7 +44,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-500 via-blue-600 to-blue-800 relative">
       {/* Professional Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/80 via-black/60 to-transparent backdrop-blur-xl">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/80 via-black/60 to-transparent backdrop-blur-xl pt-4">
         <div className="px-6 py-4 safe-area-inset-top">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">

@@ -235,25 +235,25 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
             {/* Processing Overlay */}
             {isGenerating && (
               <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center">
-                <div className="text-center space-y-6 px-6">
+                <div className="text-center space-y-4 px-4 sm:px-6 max-w-xs sm:max-w-sm mx-auto">
                   <div className="relative inline-block">
-                    <div className="w-24 h-24 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-4xl">🎬</span>
+                      <span className="text-2xl sm:text-3xl">🎬</span>
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    <p className="text-white font-bold text-xl">Creating Your Masterpiece...</p>
-                    <p className="text-cyan-300 text-sm">AI is generating a 6-second cinematic animation</p>
+                  <div className="space-y-2 sm:space-y-3">
+                    <p className="text-white font-bold text-base sm:text-xl">Creating Your Masterpiece...</p>
+                    <p className="text-cyan-300 text-xs sm:text-sm">AI is generating a 6-second cinematic animation</p>
 
                     {/* Progress Bar */}
-                    <div className="w-64 bg-slate-700 rounded-full h-2 overflow-hidden">
+                    <div className="w-full max-w-[200px] sm:max-w-[250px] mx-auto bg-slate-700 rounded-full h-2 overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <p className="text-slate-400 text-sm">{progress}% Complete</p>
+                    <p className="text-slate-400 text-xs sm:text-sm">{progress}% Complete</p>
                   </div>
                 </div>
               </div>
@@ -314,7 +314,7 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
             <div className="flex items-start space-x-3">
               <span className="text-2xl">🤖</span>
               <div className="flex-1 text-sm text-purple-200">
-                <p className="font-semibold mb-1">✨ AI-Powered by Replicate (minimax/video-01)</p>
+                <p className="font-semibold mb-1">✨ AI-Powered Video Animation</p>
                 <p className="text-purple-300/80">
                   {videoUrl
                     ? 'Your 6-second cinematic animation is ready! Download and share your creation with the world.'
