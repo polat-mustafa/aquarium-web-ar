@@ -1,0 +1,69 @@
+import { NextRequest, NextResponse } from 'next/server';
+import Replicate from 'replicate';
+import { generateAquariumPrompt } from '@/services/ReplicateVideoService';
+
+const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN || '';
+
+export async function POST(request: NextRequest) {
+  try {
+    if (!REPLICATE_API_TOKEN) {
+      return NextResponse.json(
+        { error: 'Replicate API token not configured' },
+        { status: 500 }
+      );
+    }
+
+    const body = await request.json();
+    const { creatureName = 'sea creature', style = 'cinematic' } = body;
+
+    console.log(`🎬 Generating ${style} video for ${creatureName}...`);
+
+    // Initialize Replicate client
+    const replicate = new Replicate({
+      auth: REPLICATE_API_TOKEN,
+    });
+
+    // Generate prompt
+    const prompt = generateAquariumPrompt(creatureName, style);
+
+    console.log('📝 Prompt:', prompt);
+
+    // Run video generation
+    const output = await replicate.run('minimax/video-01', {
+      input: {
+        prompt: prompt,
+      },
+    }) as any;
+
+    console.log('✅ Video generation complete!');
+
+    // Get video URL
+    let videoUrl: string;
+    if (typeof output === 'string') {
+      videoUrl = output;
+    } else if (output && typeof output.url === 'function') {
+      videoUrl = output.url();
+    } else if (output && output.url) {
+      videoUrl = output.url;
+    } else {
+      throw new Error('Unexpected output format from Replicate');
+    }
+
+    console.log('🎥 Video URL:', videoUrl);
+
+    return NextResponse.json({
+      success: true,
+      videoUrl: videoUrl,
+      prompt: prompt,
+      estimatedTime: 6, // 6 second video
+    });
+  } catch (error) {
+    console.error('❌ Video generation error:', error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
