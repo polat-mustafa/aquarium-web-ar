@@ -67,10 +67,14 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({
           <div className="absolute top-[20%] -left-4 w-12 h-12 bg-white rounded-full shadow-lg"></div>
           <div className="absolute top-[20%] -right-4 w-12 h-12 bg-white rounded-full shadow-lg"></div>
 
-          {/* Fact Text with Fun Font */}
+          {/* Fact Text with Improved Font */}
           <div className="relative z-10 text-center px-2">
-            <p className="text-xl font-bold leading-relaxed text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600"
-               style={{ fontFamily: 'Comic Sans MS, cursive' }}>
+            <p className="text-base sm:text-lg font-semibold leading-relaxed text-slate-800"
+               style={{
+                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                 textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                 letterSpacing: '0.01em'
+               }}>
               {fact[language]}
             </p>
           </div>

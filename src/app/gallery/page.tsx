@@ -9,9 +9,12 @@ import { attachModelsToCreatures, createCreaturesFromModels } from '@/utils/mode
 import { useSettings } from '@/contexts/SettingsContext';
 import { SettingsButton } from '@/components/ui/SettingsButton';
 import { CreatureIcon } from '@/components/ui/CreatureIcon';
+import { PrivacyModal } from '@/components/ui/PrivacyModal';
+import { useRouter } from 'next/navigation';
 
 export default function Gallery() {
   const { t, language } = useSettings();
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<CreatureCategory | null>(null);
   const [showCreaturePopup, setShowCreaturePopup] = useState(false);
   const [loadingCategoryId, setLoadingCategoryId] = useState<string | null>(null);
@@ -20,6 +23,10 @@ export default function Gallery() {
   const [customCreatures, setCustomCreatures] = useState<GalleryCreature[]>([]);
   const [creaturesWithModels, setCreaturesWithModels] = useState<GalleryCreature[]>([]);
   const [modelCreatures, setModelCreatures] = useState<GalleryCreature[]>([]);
+
+  // Privacy Modal State
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   // Get translated creatures and categories based on current language
   const creatureCategories = useMemo(() => getCreatureCategories(language), [language]);
@@ -30,6 +37,26 @@ export default function Gallery() {
     const combined = [...creaturesWithModels, ...modelCreatures, ...customCreatures];
     return combined.length > 0 ? combined : baseGalleryCreatures;
   }, [creaturesWithModels, modelCreatures, customCreatures, baseGalleryCreatures]);
+
+  // Check if privacy was already accepted
+  useEffect(() => {
+    const accepted = localStorage.getItem('aquarium-privacy-accepted');
+    if (accepted === 'true') {
+      setPrivacyAccepted(true);
+    } else {
+      setShowPrivacyModal(true);
+    }
+  }, []);
+
+  const handlePrivacyAccept = () => {
+    localStorage.setItem('aquarium-privacy-accepted', 'true');
+    setPrivacyAccepted(true);
+    setShowPrivacyModal(false);
+  };
+
+  const handlePrivacyDecline = () => {
+    router.push('/');
+  };
 
   // Hide scroll hint after user scrolls
   useEffect(() => {
@@ -321,6 +348,13 @@ export default function Gallery() {
           </div>
         </div>
       )}
+
+      {/* Privacy Modal */}
+      <PrivacyModal
+        show={showPrivacyModal}
+        onAccept={handlePrivacyAccept}
+        onDecline={handlePrivacyDecline}
+      />
     </div>
   );
 }

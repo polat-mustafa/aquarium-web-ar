@@ -6,6 +6,7 @@ import { ARViewer } from '@/components/ar/ARViewer';
 import { SharePanel } from '@/components/ui/SharePanel';
 import { SpeechBubble } from '@/components/ui/SpeechBubble';
 import LensAnimation from '@/components/ar/LensAnimation';
+import { PrivacyModal } from '@/components/ui/PrivacyModal';
 import { useAppStore } from '@/stores/useAppStore';
 import { galleryCreatures } from '@/utils/galleryData';
 import { MODEL_REGISTRY } from '@/utils/modelMatcher';
@@ -40,6 +41,10 @@ function ARExperienceContent() {
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [showZoomIndicator, setShowZoomIndicator] = useState(false);
   const zoomIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Privacy Modal State
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   const {
     activeCreature,
@@ -93,6 +98,26 @@ function ARExperienceContent() {
       document.body.removeAttribute('data-page');
     };
   }, []);
+
+  // Check if privacy was already accepted
+  useEffect(() => {
+    const accepted = localStorage.getItem('aquarium-privacy-accepted');
+    if (accepted === 'true') {
+      setPrivacyAccepted(true);
+    } else {
+      setShowPrivacyModal(true);
+    }
+  }, []);
+
+  const handlePrivacyAccept = useCallback(() => {
+    localStorage.setItem('aquarium-privacy-accepted', 'true');
+    setPrivacyAccepted(true);
+    setShowPrivacyModal(false);
+  }, []);
+
+  const handlePrivacyDecline = useCallback(() => {
+    router.push('/');
+  }, [router]);
 
 
   // Initialize AR from store (once) - ONLY on first mount
@@ -961,6 +986,13 @@ function ARExperienceContent() {
       <LensAnimation
         isVisible={showLensAnimation}
         onComplete={() => setShowLensAnimation(false)}
+      />
+
+      {/* Privacy Modal */}
+      <PrivacyModal
+        show={showPrivacyModal}
+        onAccept={handlePrivacyAccept}
+        onDecline={handlePrivacyDecline}
       />
     </div>
   );
