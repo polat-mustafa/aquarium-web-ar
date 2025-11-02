@@ -235,9 +235,30 @@ export class PhotoBlobManager {
   private restorationPromise: Promise<void> | null = null;
 
   constructor() {
-    // Don't auto-restore from localStorage on initialization
-    // Only restore when explicitly needed (on preview page)
+    // Clear old localStorage cache on initialization
+    // This ensures we always show fresh photos
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(this.STORAGE_KEY);
+      localStorage.removeItem(this.METADATA_KEY);
+      // Also clear old IndexedDB cache from previous version
+      this.clearOldIndexedDB();
+    }
     this.restorationPromise = Promise.resolve();
+  }
+
+  /**
+   * Clear old IndexedDB cache from previous photo transformation system
+   */
+  private clearOldIndexedDB(): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      // Delete old aquarium-image-cache database
+      indexedDB.deleteDatabase('aquarium-image-cache');
+      console.log('🗑️ Cleared old photo cache');
+    } catch (error) {
+      console.warn('Could not clear old IndexedDB:', error);
+    }
   }
 
   /**
@@ -262,8 +283,8 @@ export class PhotoBlobManager {
       captureTime: new Date(),
     };
 
-    // Persist to localStorage as data URL (wait for completion)
-    await this.persistToStorage(blob);
+    // No localStorage caching - always use fresh photos
+    console.log('📸 Fresh photo stored:', { size: Math.round(blob.size / 1024) + 'KB', creatureName });
 
     return this.photoUrl;
   }
