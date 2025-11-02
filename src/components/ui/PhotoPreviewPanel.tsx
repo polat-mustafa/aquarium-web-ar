@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { photoService } from '@/services/PhotoCaptureService';
 import { generateVideoAnimation, type VideoGenerationOptions } from '@/services/ReplicateVideoService';
 import { useAppStore } from '@/stores/useAppStore';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface PhotoPreviewPanelProps {
   onClose?: () => void;
@@ -17,6 +18,7 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
   const [progress, setProgress] = useState(0);
 
   const { activeCreature } = useAppStore();
+  const { t } = useSettings();
 
   useEffect(() => {
     // Get photo from service
@@ -117,20 +119,18 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
   };
 
   const styles = [
-    { id: 'cinematic', name: 'Cinematic', icon: '🎬', description: 'Hollywood-style underwater masterpiece' },
-    { id: 'documentary', name: 'Documentary', icon: '📺', description: 'BBC nature documentary style' },
-    { id: 'anime', name: 'Anime', icon: '⚡', description: 'Studio Ghibli magical animation' },
-    { id: 'cartoon', name: 'Cartoon', icon: '🎨', description: 'Disney/Pixar playful style' },
-    { id: 'realistic', name: 'Realistic', icon: '🌊', description: 'Ultra-realistic IMAX quality' },
+    { id: 'cinematic', name: t.cinematic, icon: '🎬', description: t.cinematicDesc },
+    { id: 'documentary', name: t.documentary, icon: '📺', description: t.documentaryDesc },
+    { id: 'anime', name: t.anime, icon: '⚡', description: t.animeDesc },
+    { id: 'cartoon', name: t.cartoon, icon: '🎨', description: t.cartoonDesc },
+    { id: 'realistic', name: t.realistic, icon: '🌊', description: t.realisticDesc },
   ];
 
   const motivationalPhrases = [
-    '🎬 Create an Aquarium Animation with AI',
-    '🌊 Transform Your Moment into Magic',
-    '🎥 Create Your Own Short Film',
-    '✨ Bring Your AR Photo to Life',
-    '🐠 Make Cinema from Your Capture',
-    '🎞️ Turn Stillness into Motion',
+    `🎬 ${t.createShareFilm}`,
+    `🌊 ${t.aiVideoCreator}`,
+    `🎥 ${t.generateVideoAnimation}`,
+    `✨ ${t.aiPoweredVideo}`,
   ];
 
   const [currentPhrase, setCurrentPhrase] = useState(0);
@@ -154,10 +154,10 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-cyan-300 via-blue-400 to-cyan-300 bg-clip-text text-transparent">
-                  AI Video Creator
+                  {t.aiVideoCreator}
                 </h1>
                 <p className="text-xs sm:text-sm text-cyan-300 font-semibold">
-                  Create & Share Your Short Film
+                  {t.createShareFilm}
                 </p>
               </div>
             </div>
@@ -243,8 +243,8 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
                     </div>
                   </div>
                   <div className="space-y-2 sm:space-y-3">
-                    <p className="text-white font-bold text-base sm:text-xl">Creating Your Masterpiece...</p>
-                    <p className="text-cyan-300 text-xs sm:text-sm">AI is generating a 6-second cinematic animation</p>
+                    <p className="text-white font-bold text-base sm:text-xl">{t.creatingMasterpiece}</p>
+                    <p className="text-cyan-300 text-xs sm:text-sm">{t.aiGeneratingVideo}</p>
 
                     {/* Progress Bar */}
                     <div className="w-full max-w-[200px] sm:max-w-[250px] mx-auto bg-slate-700 rounded-full h-2 overflow-hidden">
@@ -253,7 +253,7 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <p className="text-slate-400 text-xs sm:text-sm">{progress}% Complete</p>
+                    <p className="text-slate-400 text-xs sm:text-sm">{progress}% {t.percentComplete}</p>
                   </div>
                 </div>
               </div>
@@ -264,7 +264,7 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
               <div className="absolute top-4 left-4 bg-green-500/90 backdrop-blur-sm px-4 py-2 rounded-full border border-green-400/50">
                 <div className="flex items-center space-x-2">
                   <span className="text-xl">✅</span>
-                  <span className="text-sm font-semibold text-white">Video Ready!</span>
+                  <span className="text-sm font-semibold text-white">{t.videoReady}</span>
                 </div>
               </div>
             )}
@@ -274,7 +274,7 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
         {/* Style Selection */}
         {!videoUrl && !isGenerating && (
           <div className="max-w-2xl mx-auto">
-            <h3 className="text-lg font-bold text-white mb-4">Choose Animation Style</h3>
+            <h3 className="text-lg font-bold text-white mb-4">{t.chooseAnimationStyle}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {styles.map((style) => (
                 <button
@@ -314,11 +314,9 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
             <div className="flex items-start space-x-3">
               <span className="text-2xl">🤖</span>
               <div className="flex-1 text-sm text-purple-200">
-                <p className="font-semibold mb-1">✨ AI-Powered Video Animation</p>
+                <p className="font-semibold mb-1">✨ {t.aiPoweredVideo}</p>
                 <p className="text-purple-300/80">
-                  {videoUrl
-                    ? 'Your 6-second cinematic animation is ready! Download and share your creation with the world.'
-                    : 'Select a style and click "Generate Video" to transform your AR photo into a stunning 6-second animation.'}
+                  {videoUrl ? t.videoReadyDesc : t.selectStyleDesc}
                 </p>
               </div>
             </div>
@@ -339,7 +337,7 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                <span>Download</span>
+                <span>{t.download}</span>
               </button>
 
               <button
@@ -349,7 +347,7 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
-                <span>Share</span>
+                <span>{t.share}</span>
               </button>
             </div>
           ) : (
@@ -364,7 +362,7 @@ export function PhotoPreviewPanel({ onClose }: PhotoPreviewPanelProps) {
               }`}
             >
               <span className="text-2xl">🎬</span>
-              <span>{isGenerating ? 'Generating...' : 'Generate Video Animation'}</span>
+              <span>{isGenerating ? t.generating : t.generateVideoAnimation}</span>
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>

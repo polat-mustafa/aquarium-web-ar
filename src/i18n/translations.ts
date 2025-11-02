@@ -59,6 +59,39 @@ export interface Translations {
   lightMode: string;
   darkMode: string;
 
+  // Video Animation (PhotoPreviewPanel)
+  aiVideoCreator: string;
+  createShareFilm: string;
+  chooseAnimationStyle: string;
+  cinematic: string;
+  cinematicDesc: string;
+  documentary: string;
+  documentaryDesc: string;
+  anime: string;
+  animeDesc: string;
+  cartoon: string;
+  cartoonDesc: string;
+  realistic: string;
+  realisticDesc: string;
+  aiPoweredVideo: string;
+  videoReady: string;
+  videoReadyDesc: string;
+  selectStyleDesc: string;
+  generateVideoAnimation: string;
+  generating: string;
+  creatingMasterpiece: string;
+  aiGeneratingVideo: string;
+  percentComplete: string;
+  download: string;
+  share: string;
+
+  // Privacy Modal
+  privacyTitle: string;
+  privacyMessage: string;
+  privacyKVKK: string;
+  privacyAccept: string;
+  privacyDecline: string;
+
   // Categories
   categories: {
     fish: { name: string; description: string };
@@ -120,6 +153,37 @@ const englishTranslations: Translations = {
   theme: 'Theme',
   lightMode: 'Light Mode',
   darkMode: 'Dark Mode',
+
+  aiVideoCreator: 'AI Video Creator',
+  createShareFilm: 'Create & Share Your Short Film',
+  chooseAnimationStyle: 'Choose Animation Style',
+  cinematic: 'Cinematic',
+  cinematicDesc: 'Hollywood-style underwater masterpiece',
+  documentary: 'Documentary',
+  documentaryDesc: 'BBC nature documentary style',
+  anime: 'Anime',
+  animeDesc: 'Studio Ghibli magical animation',
+  cartoon: 'Cartoon',
+  cartoonDesc: 'Disney/Pixar playful style',
+  realistic: 'Realistic',
+  realisticDesc: 'Ultra-realistic IMAX quality',
+  aiPoweredVideo: 'AI-Powered Video Animation',
+  videoReady: 'Video Ready!',
+  videoReadyDesc: 'Your 6-second cinematic animation is ready! Download and share your creation with the world.',
+  selectStyleDesc: 'Select a style and click "Generate Video" to transform your AR photo into a stunning 6-second animation.',
+  generateVideoAnimation: 'Generate Video Animation',
+  generating: 'Generating...',
+  creatingMasterpiece: 'Creating Your Masterpiece...',
+  aiGeneratingVideo: 'AI is generating a 6-second cinematic animation',
+  percentComplete: 'Complete',
+  download: 'Download',
+  share: 'Share',
+
+  privacyTitle: 'Privacy & Data Protection',
+  privacyMessage: 'Videos and photos are not stored on our servers. All content is processed locally on your device and deleted after you close the app.',
+  privacyKVKK: 'By continuing, you agree to our terms of service and privacy policy (KVKK compliance). Your data is protected and never shared with third parties.',
+  privacyAccept: 'Accept & Continue',
+  privacyDecline: 'Decline',
 
   categories: {
     fish: {
@@ -220,6 +284,37 @@ const turkishTranslations: Translations = {
   lightMode: 'Açık Mod',
   darkMode: 'Koyu Mod',
 
+  aiVideoCreator: 'AI Video Oluşturucu',
+  createShareFilm: 'Kısa Filminizi Oluşturun ve Paylaşın',
+  chooseAnimationStyle: 'Animasyon Stili Seçin',
+  cinematic: 'Sinematik',
+  cinematicDesc: 'Hollywood tarzı sualtı şaheseri',
+  documentary: 'Belgesel',
+  documentaryDesc: 'BBC doğa belgeseli tarzı',
+  anime: 'Anime',
+  animeDesc: 'Studio Ghibli sihirli animasyon',
+  cartoon: 'Çizgi Film',
+  cartoonDesc: 'Disney/Pixar eğlenceli tarz',
+  realistic: 'Gerçekçi',
+  realisticDesc: 'Ultra gerçekçi IMAX kalitesi',
+  aiPoweredVideo: 'AI Destekli Video Animasyonu',
+  videoReady: 'Video Hazır!',
+  videoReadyDesc: '6 saniyelik sinematik animasyonunuz hazır! Kreasyonunuzu indirin ve dünyayla paylaşın.',
+  selectStyleDesc: 'Bir stil seçin ve AR fotoğrafınızı muhteşem 6 saniyelik bir animasyona dönüştürmek için "Video Oluştur"a tıklayın.',
+  generateVideoAnimation: 'Video Animasyonu Oluştur',
+  generating: 'Oluşturuluyor...',
+  creatingMasterpiece: 'Şaheseriniz Oluşturuluyor...',
+  aiGeneratingVideo: 'AI 6 saniyelik sinematik animasyon oluşturuyor',
+  percentComplete: 'Tamamlandı',
+  download: 'İndir',
+  share: 'Paylaş',
+
+  privacyTitle: 'Gizlilik ve Veri Koruma',
+  privacyMessage: 'Videolar ve fotoğraflar sunucularımızda saklanmaz. Tüm içerik cihazınızda yerel olarak işlenir ve uygulamayı kapattıktan sonra silinir.',
+  privacyKVKK: 'Devam ederek, hizmet şartlarımızı ve gizlilik politikamızı (KVKK uyumluluğu) kabul ediyor sunuz. Verileriniz korunur ve asla üçüncü taraflarla paylaşılmaz.',
+  privacyAccept: 'Kabul Et ve Devam Et',
+  privacyDecline: 'Reddet',
+
   categories: {
     fish: {
       name: 'Balıklar',
@@ -318,6 +413,37 @@ const polishTranslations: Translations = {
   theme: 'Motyw',
   lightMode: 'Jasny Motyw',
   darkMode: 'Ciemny Motyw',
+
+  aiVideoCreator: 'Kreator Wideo AI',
+  createShareFilm: 'Stwórz i udostępnij swój krótki film',
+  chooseAnimationStyle: 'Wybierz styl animacji',
+  cinematic: 'Kinematyczny',
+  cinematicDesc: 'Hollywoodzie podwodne arcydzieło',
+  documentary: 'Dokumentalny',
+  documentaryDesc: 'Styl dokumentu przyrodniczego BBC',
+  anime: 'Anime',
+  animeDesc: 'Magiczna animacja Studio Ghibli',
+  cartoon: 'Kreskówka',
+  cartoonDesc: 'Zabawny styl Disney/Pixar',
+  realistic: 'Realistyczny',
+  realisticDesc: 'Ultra-realistyczna jakość IMAX',
+  aiPoweredVideo: 'Animacja wideo zasilana AI',
+  videoReady: 'Wideo gotowe!',
+  videoReadyDesc: 'Twoja 6-sekundowa kinematyczna animacja jest gotowa! Pobierz i udostępnij swoje dzieło światu.',
+  selectStyleDesc: 'Wybierz styl i kliknij "Generuj wideo", aby przekształcić swoje zdjęcie AR w oszałamiającą 6-sekundową animację.',
+  generateVideoAnimation: 'Generuj animację wideo',
+  generating: 'Generowanie...',
+  creatingMasterpiece: 'Tworzenie Twojego arcydzieła...',
+  aiGeneratingVideo: 'AI generuje 6-sekundową kinematyczną animację',
+  percentComplete: 'Ukończono',
+  download: 'Pobierz',
+  share: 'Udostępnij',
+
+  privacyTitle: 'Prywatność i ochrona danych',
+  privacyMessage: 'Filmy i zdjęcia nie są przechowywane na naszych serwerach. Cała zawartość jest przetwarzana lokalnie na Twoim urządzeniu i usuwana po zamknięciu aplikacji.',
+  privacyKVKK: 'Kontynuując, zgadzasz się z naszymi warunkami usługi i polityką prywatności (zgodność z RODO). Twoje dane są chronione i nigdy nie są udostępniane stronom trzecim.',
+  privacyAccept: 'Akceptuj i kontynuuj',
+  privacyDecline: 'Odrzuć',
 
   categories: {
     fish: {
