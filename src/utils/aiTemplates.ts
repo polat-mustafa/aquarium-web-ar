@@ -194,8 +194,8 @@ export function getAllCategories(): AITemplate['category'][] {
 
 /**
  * Apply AI template to image
- * - Simpson, Pixar, Anime: Uses FREE Hugging Face with caching
- * - Others: Uses Z.AI CogView-4
+ * - Simpson, Pixar, Anime: Uses INSTANT CSS Filters (FREE, transforms REAL photo)
+ * - Others: Uses Z.AI CogView-4 (generates new AI image)
  */
 export async function applyAITemplate(
   imageBlob: Blob,
@@ -203,18 +203,18 @@ export async function applyAITemplate(
   creatureName?: string
 ): Promise<Blob> {
   console.log('🎨 Applying AI Template:', template.name);
-  console.log('📝 Style prompt:', template.apiConfig?.stylePrompt);
+  console.log('📝 Style:', template.id);
 
   try {
-    // Check if this is a top 3 template (Simpson, Pixar, Anime)
-    const useHuggingFace = ['simpson', 'pixar', 'anime'].includes(template.id);
+    // Check if this is a top 3 template (Simpson, Pixar, Anime) - use instant filters
+    const useInstantFilters = ['simpson', 'pixar', 'anime'].includes(template.id);
 
-    if (useHuggingFace) {
-      console.log('🤗 Using FREE Hugging Face with caching');
+    if (useInstantFilters) {
+      console.log('⚡ Using INSTANT CSS Filters (transforms your actual photo!)');
 
       // Import services dynamically
       const { imageCacheService } = await import('@/services/ImageCacheService');
-      const { transformImageViaAPI } = await import('@/services/HuggingFaceService');
+      const { transformImageWithFilters } = await import('@/services/CSSFilterService');
 
       // Check cache first
       const cachedImage = await imageCacheService.getCached(imageBlob, template.id);
@@ -223,35 +223,24 @@ export async function applyAITemplate(
         return cachedImage;
       }
 
-      // Transform using Hugging Face
-      const result = await transformImageViaAPI(
+      // Transform using CSS filters (INSTANT!)
+      console.log('🎨 Applying filters...');
+      const transformedBlob = await transformImageWithFilters(
         imageBlob,
-        template,
         template.id as 'simpson' | 'pixar' | 'anime'
       );
 
-      if (result.success && result.imageBlob) {
-        console.log('✅ Hugging Face transformation successful!');
+      console.log('✅ Filter transformation successful!');
 
-        // Cache the result for next time
-        await imageCacheService.setCached(
-          imageBlob,
-          template.id,
-          result.imageBlob,
-          template.name
-        );
+      // Cache the result for next time
+      await imageCacheService.setCached(
+        imageBlob,
+        template.id,
+        transformedBlob,
+        template.name
+      );
 
-        return result.imageBlob;
-      } else {
-        console.warn('❌ Hugging Face transformation failed:', result.error);
-        // Show user-friendly error
-        if (result.error?.includes('loading')) {
-          alert('⏳ AI model is loading. Please try again in 20-30 seconds.');
-        } else {
-          alert(`❌ Transformation failed: ${result.error}`);
-        }
-        return imageBlob;
-      }
+      return transformedBlob;
     } else {
       console.log('🚀 Using Z.AI CogView-4 (generates new image)');
 

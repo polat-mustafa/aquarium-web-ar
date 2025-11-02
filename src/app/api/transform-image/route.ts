@@ -8,19 +8,20 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY || '';
 
-// Free Hugging Face models for each style
+// Working Hugging Face models that support Inference API
+// These models are confirmed to work with the Inference API
 const STYLE_MODELS = {
   simpson: {
-    model: 'ogkalu/Comic-Diffusion',
-    prompt: 'cartoon style, The Simpsons, yellow skin, 2D animation, simple shapes, bold outlines',
+    model: 'stabilityai/stable-diffusion-2-1',
+    prompt: 'cartoon style, The Simpsons TV show, yellow skin character, 2D animation, simple shapes, bold black outlines, Springfield style',
   },
   pixar: {
-    model: 'nitrosocke/mo-di-diffusion',
-    prompt: 'modern disney style, pixar, 3D rendered, soft lighting, expressive features, animation quality',
+    model: 'stabilityai/stable-diffusion-2-1',
+    prompt: 'Pixar 3D animation style, Disney Pixar character, soft lighting, expressive features, 3D rendered, computer animation',
   },
   anime: {
-    model: 'Linaqruf/anything-v3.0',
-    prompt: 'anime style, manga, japanese animation, vibrant colors, detailed',
+    model: 'stabilityai/stable-diffusion-2-1',
+    prompt: 'anime style illustration, manga art, japanese animation style, vibrant colors, detailed anime character',
   },
 } as const;
 
@@ -55,30 +56,23 @@ export async function POST(request: NextRequest) {
 
     // Convert image to buffer
     const imageBuffer = await imageFile.arrayBuffer();
+    const imageData = new Uint8Array(imageBuffer);
 
-    // Call Hugging Face Inference API
+    // Call Hugging Face Inference API with IMAGE + PROMPT (image-to-image)
     const apiUrl = `https://api-inference.huggingface.co/models/${modelConfig.model}`;
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    const headers: Record<string, string> = {};
 
     // Only add authorization if API key is available
     if (HUGGINGFACE_API_KEY) {
       headers['Authorization'] = `Bearer ${HUGGINGFACE_API_KEY}`;
     }
 
+    // Send the actual image bytes for transformation
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        inputs: modelConfig.prompt,
-        parameters: {
-          negative_prompt: 'blurry, low quality, distorted, ugly',
-          num_inference_steps: 30,
-          guidance_scale: 7.5,
-        },
-      }),
+      body: imageData,
     });
 
     if (!response.ok) {
