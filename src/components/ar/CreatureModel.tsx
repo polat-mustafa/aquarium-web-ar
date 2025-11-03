@@ -239,14 +239,31 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
     if (isAvoidingObstacle) return; // Already avoiding
 
     const currentPosVec = new THREE.Vector3(currentPos[0], currentPos[1], currentPos[2]);
-    const targetPosVec = calculateAvoidanceVector(currentPosVec, obstacle, camera);
+
+    // Calculate avoidance with depth consideration
+    const obstacleDepth = obstacle.depth || 2.5;
+    const fishDepth = Math.abs(currentPos[2]);
+
+    // If fish is behind obstacle (higher z value = further), swim behind
+    const shouldGoBehind = Math.random() > 0.5 || fishDepth > obstacleDepth;
+
+    let targetPosVec: THREE.Vector3;
+
+    if (shouldGoBehind) {
+      // Swim BEHIND the obstacle (further away in Z)
+      targetPosVec = calculateAvoidanceVector(currentPosVec, obstacle, camera);
+      targetPosVec.z = Math.min(targetPosVec.z, -obstacleDepth - 1); // Go behind
+    } else {
+      // Swim away to the side
+      targetPosVec = calculateAvoidanceVector(currentPosVec, obstacle, camera);
+    }
 
     // Clamp to reasonable bounds
     const newX = Math.max(-3, Math.min(3, targetPosVec.x));
     const newY = Math.max(-2, Math.min(2, targetPosVec.y));
-    const newZ = Math.max(-5, Math.min(-1, targetPosVec.z));
+    const newZ = Math.max(-6, Math.min(-1, targetPosVec.z));
 
-    // Start escape animation
+    // Start SLOWER escape animation
     positionAnimationRef.current = {
       progress: 0,
       from: currentPos,
@@ -255,11 +272,15 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
 
     setIsAvoidingObstacle(true);
 
-    // Reset avoidance state after animation
+    // Show speech bubble on collision
+    setShowSpeechBubble(true);
+    setTimeout(() => setShowSpeechBubble(false), speechBubbleDuration);
+
+    // Reset avoidance state after LONGER animation
     setTimeout(() => {
       setIsAvoidingObstacle(false);
-    }, 1200);
-  }, [isAvoidingObstacle]);
+    }, 2500); // Slower movement - 2.5 seconds
+  }, [isAvoidingObstacle, setShowSpeechBubble, speechBubbleDuration]);
 
   // Update every frame
   useFrame((state, delta) => {
@@ -267,12 +288,12 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
 
     const time = state.clock.elapsedTime;
 
-    // COLLISION DETECTION: Check for obstacles every 100ms
-    if (enableCollisionDetection && obstacleZones && obstacleZones.length > 0 && time - lastObstacleCheckRef.current > 0.1) {
+    // COLLISION DETECTION: Check for obstacles every 50ms (more responsive)
+    if (enableCollisionDetection && obstacleZones && obstacleZones.length > 0 && time - lastObstacleCheckRef.current > 0.05) {
       lastObstacleCheckRef.current = time;
 
       const currentPosVec = new THREE.Vector3(dynamicPosition[0], dynamicPosition[1], dynamicPosition[2]);
-      const collision = checkCollision(currentPosVec, state.camera, obstacleZones, 0.08);
+      const collision = checkCollision(currentPosVec, state.camera, obstacleZones, 0.15); // LARGER threshold for earlier detection
 
       if (collision && !isAvoidingObstacle) {
         avoidObstacle(collision, dynamicPosition, state.camera);
@@ -285,9 +306,9 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
       mixerRef.current.update(validDelta);
     }
 
-    // Animate position change
+    // Animate position change - SLOWER for more natural movement
     if (positionAnimationRef.current.progress < 1) {
-      positionAnimationRef.current.progress += delta * 0.8; // Smooth animation
+      positionAnimationRef.current.progress += delta * 0.4; // SLOWER smooth animation
       const progress = Math.min(positionAnimationRef.current.progress, 1);
 
       // Smooth easing

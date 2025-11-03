@@ -106,6 +106,8 @@ export class MediaPipeDepthSensor {
 
   private processHandResults(results: any): void {
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+      console.log(`✋ MediaPipe detected ${results.multiHandLandmarks.length} hand(s)`);
+
       const obstacles: ObstacleZone[] = results.multiHandLandmarks.map((landmarks: any, index: number) => {
         const xs = landmarks.map((lm: any) => lm.x);
         const ys = landmarks.map((lm: any) => lm.y);
@@ -117,6 +119,26 @@ export class MediaPipeDepthSensor {
         const maxY = Math.max(...ys);
         const avgZ = zs.reduce((sum: number, z: number) => sum + z, 0) / zs.length;
 
+        // Improved depth estimation
+        // MediaPipe Z is typically -0.2 to 0.2 meters relative to wrist
+        // Map to actual depth: larger hand = closer, smaller = further
+        const handWidth = maxX - minX;
+        const handHeight = maxY - minY;
+        const handSize = Math.max(handWidth, handHeight);
+
+        // Estimate depth based on hand size and Z value
+        // Typical hand size: 0.15-0.30 at arm's length (1-2m)
+        let estimatedDepth = 2.5; // Default
+        if (handSize > 0.25) estimatedDepth = 1.5; // Very close
+        else if (handSize > 0.15) estimatedDepth = 2.0; // Arm's length
+        else estimatedDepth = 3.0; // Further
+
+        // Adjust with Z value (negative = closer to camera)
+        estimatedDepth += avgZ * 2;
+        estimatedDepth = Math.max(1.0, Math.min(5.0, estimatedDepth));
+
+        console.log(`  Hand ${index}: size=${handSize.toFixed(3)}, z=${avgZ.toFixed(3)}, depth=${estimatedDepth.toFixed(2)}m`);
+
         const padding = 0.05;
         return {
           id: `hand-${index}`,
@@ -124,7 +146,7 @@ export class MediaPipeDepthSensor {
           y: Math.max(0, minY - padding),
           width: Math.min(1, maxX - minX + padding * 2),
           height: Math.min(1, maxY - minY + padding * 2),
-          depth: Math.abs(avgZ) * 2, // Convert to approximate meters
+          depth: estimatedDepth,
           type: 'hand' as const,
           confidence: 0.9
         };
@@ -405,6 +427,8 @@ export class TensorFlowDepthSensor {
       const videoWidth = this.videoElement.videoWidth;
       const videoHeight = this.videoElement.videoHeight;
 
+      console.log(`🧠 TensorFlow detected ${predictions.length} face(s)`);
+
       // Convert face predictions to obstacle zones
       predictions.forEach((prediction, index) => {
         // BlazeFace returns: topLeft, bottomRight, probability
@@ -412,7 +436,7 @@ export class TensorFlowDepthSensor {
         const end = prediction.bottomRight;
         const probability = prediction.probability;
 
-        if (probability && probability[0] > 0.5) {
+        if (probability && probability[0] > 0.4) {
           // Convert to normalized coordinates (0-1)
           const x = start[0] / videoWidth;
           const y = start[1] / videoHeight;
@@ -420,8 +444,12 @@ export class TensorFlowDepthSensor {
           const height = (end[1] - start[1]) / videoHeight;
 
           // Estimate depth based on face size (larger = closer)
+          // Typical face area: 0.02-0.15 of screen
           const faceArea = width * height;
-          const estimatedDepth = Math.max(0.5, Math.min(5, 1 / (faceArea * 10)));
+          // Map face area to depth: 0.1 area = 1.5m, 0.02 area = 4m
+          const estimatedDepth = Math.max(1.5, Math.min(5, 3.5 - (faceArea * 20)));
+
+          console.log(`  Face ${index}: area=${faceArea.toFixed(3)}, depth=${estimatedDepth.toFixed(2)}m, confidence=${(probability[0] * 100).toFixed(0)}%`);
 
           obstacles.push({
             id: `face-${index}`,

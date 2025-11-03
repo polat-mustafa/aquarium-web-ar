@@ -634,7 +634,7 @@ function TestNewSceneContent() {
       {/* Environment Scan Animation on Startup */}
       <EnvironmentScanAnimation
         isActive={showEnvironmentScan && !environmentScanComplete}
-        duration={3000}
+        duration={4000}
         onComplete={() => {
           setEnvironmentScanComplete(true);
           setShowEnvironmentScan(false);
