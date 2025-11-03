@@ -30,24 +30,28 @@ export type DepthSensingMode = 'mediapipe' | 'webxr' | 'tensorflow' | 'none';
  */
 export class MediaPipeDepthSensor {
   private hands: any;
-  private camera: any;
+  private camera: any = null;
   private videoElement: HTMLVideoElement | null = null;
   private onObstaclesCallback?: (zones: ObstacleZone[]) => void;
+  private isProcessing = false;
 
   async initialize(videoElement: HTMLVideoElement, onObstacles: (zones: ObstacleZone[]) => void): Promise<void> {
     try {
       this.videoElement = videoElement;
       this.onObstaclesCallback = onObstacles;
 
-      // Ensure video is ready
+      // Ensure video is ready and playing
       if (videoElement.readyState < 2) {
-        await new Promise<void>((resolve) => {
-          videoElement.onloadeddata = () => resolve();
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Video not ready')), 5000);
+          videoElement.onloadeddata = () => {
+            clearTimeout(timeout);
+            resolve();
+          };
         });
       }
 
       const { Hands } = await import('@mediapipe/hands');
-      const { Camera } = await import('@mediapipe/camera_utils');
 
       this.hands = new Hands({
         locateFile: (file: string) => {
@@ -66,17 +70,33 @@ export class MediaPipeDepthSensor {
         this.processHandResults(results);
       });
 
-      this.camera = new Camera(videoElement, {
-        onFrame: async () => {
-          if (videoElement && this.hands) {
-            await this.hands.send({ image: videoElement });
-          }
-        },
-        width: 1280,
-        height: 720
-      });
+      // Initialize hands model
+      await this.hands.initialize();
 
-      this.camera.start();
+      // Use existing video stream instead of creating new Camera
+      // Process frames manually using requestAnimationFrame
+      const processFrame = async () => {
+        if (!this.hands || !this.videoElement || this.isProcessing) {
+          this.camera = requestAnimationFrame(processFrame);
+          return;
+        }
+
+        try {
+          this.isProcessing = true;
+          await this.hands.send({ image: this.videoElement });
+        } catch (err) {
+          console.error('MediaPipe processing error:', err);
+        } finally {
+          this.isProcessing = false;
+        }
+
+        // Continue processing
+        this.camera = requestAnimationFrame(processFrame);
+      };
+
+      // Start processing
+      processFrame();
+
       console.log('✅ MediaPipe initialized successfully');
     } catch (error) {
       console.error('❌ MediaPipe initialization failed:', error);
@@ -118,11 +138,17 @@ export class MediaPipeDepthSensor {
 
   stop(): void {
     if (this.camera) {
-      this.camera.stop();
+      if (typeof this.camera === 'number') {
+        cancelAnimationFrame(this.camera);
+      } else if (this.camera.stop) {
+        this.camera.stop();
+      }
     }
     if (this.hands) {
       this.hands.close();
     }
+    this.camera = null;
+    this.hands = null;
   }
 }
 

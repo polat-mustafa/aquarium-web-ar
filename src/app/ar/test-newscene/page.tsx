@@ -290,17 +290,40 @@ function TestNewSceneContent() {
 
   // DEPTH SENSING: Handle mode change
   const handleDepthModeChange = useCallback(async (mode: DepthSensingMode) => {
+    console.log(`🔄 Switching to ${mode} mode...`);
     setDepthSensingMode(mode);
     setErrorMessage(null);
     setDepthSensorReady(false);
     setObstacleZones([]);
 
-    if (mode === 'none' || !videoRef.current || !isCameraReady) {
+    if (mode === 'none') {
       depthManagerRef.current.stop();
+      console.log('⏹️ Depth sensing stopped');
+      return;
+    }
+
+    if (!videoRef.current) {
+      setErrorMessage('Camera not available');
+      setDepthSensingMode('none');
+      return;
+    }
+
+    if (!isCameraReady) {
+      setErrorMessage('Please wait for camera to be ready');
+      setDepthSensingMode('none');
+      return;
+    }
+
+    // Check video is actually playing
+    if (videoRef.current.paused || videoRef.current.readyState < 2) {
+      setErrorMessage('Camera video not ready. Please refresh the page.');
+      setDepthSensingMode('none');
       return;
     }
 
     try {
+      console.log(`📹 Video ready: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
+
       await depthManagerRef.current.setMode(
         mode,
         videoRef.current,
@@ -313,7 +336,8 @@ function TestNewSceneContent() {
       console.log(`✅ ${mode.toUpperCase()} initialized successfully`);
     } catch (error: any) {
       console.error(`❌ ${mode} initialization failed:`, error);
-      setErrorMessage(error.message || `Failed to initialize ${mode}`);
+      const errorMsg = error.message || `Failed to initialize ${mode}`;
+      setErrorMessage(errorMsg);
       setDepthSensingMode('none');
     }
   }, [isCameraReady]);
