@@ -7,11 +7,23 @@ import * as THREE from 'three';
 import type { SeaCreature, AnimationState } from '@/types';
 import { useAppStore } from '@/stores/useAppStore';
 
+interface ObstacleZone {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  depth?: number;
+  type: 'hand' | 'person' | 'object';
+}
+
 interface CreatureModelProps {
   creature: SeaCreature;
   position: [number, number, number];
   scale: number;
   onClick?: () => void;
+  obstacleZones?: ObstacleZone[];
+  enableCollisionDetection?: boolean;
 }
 
 // Simple icon fallback for creatures without 3D models
@@ -60,6 +72,8 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
   position,
   scale,
   onClick,
+  obstacleZones = [],
+  enableCollisionDetection = false,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
@@ -73,6 +87,8 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
   // Dynamic position state
   const [dynamicPosition, setDynamicPosition] = useState<[number, number, number]>(position);
   const positionAnimationRef = useRef({ progress: 1, from: position, to: position });
+  const [isAvoidingObstacle, setIsAvoidingObstacle] = useState(false);
+  const lastObstacleCheckRef = useRef(0);
 
   // Get zoom level and speech bubble settings from store
   const zoomLevel = useAppStore((state) => state.zoomLevel);
@@ -209,11 +225,86 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
     }
   }, [isTurning, onClick, setShowSpeechBubble, position, dynamicPosition, speechBubbleDuration, creature.name]);
 
+  // COLLISION DETECTION: Check if creature is colliding with obstacles
+  const checkCollision = useCallback((currentPos: [number, number, number], camera: THREE.Camera) => {
+    if (!enableCollisionDetection || obstacleZones.length === 0) return null;
+
+    // Project creature's 3D position to 2D screen space
+    const creatureWorldPos = new THREE.Vector3(currentPos[0], currentPos[1], currentPos[2]);
+    const creatureScreenPos = creatureWorldPos.project(camera);
+
+    // Convert from normalized device coordinates [-1, 1] to screen space [0, 1]
+    const creatureX = (creatureScreenPos.x + 1) / 2;
+    const creatureY = (-creatureScreenPos.y + 1) / 2; // Invert Y
+
+    // Check collision with each obstacle zone
+    for (const zone of obstacleZones) {
+      const zoneRight = zone.x + zone.width;
+      const zoneBottom = zone.y + zone.height;
+
+      // Add padding for detection sensitivity
+      const padding = 0.05;
+
+      if (
+        creatureX >= zone.x - padding &&
+        creatureX <= zoneRight + padding &&
+        creatureY >= zone.y - padding &&
+        creatureY <= zoneBottom + padding
+      ) {
+        return zone;
+      }
+    }
+
+    return null;
+  }, [enableCollisionDetection, obstacleZones]);
+
+  // COLLISION AVOIDANCE: Move fish away from obstacle
+  const avoidObstacle = useCallback((obstacle: ObstacleZone, currentPos: [number, number, number]) => {
+    if (isAvoidingObstacle) return; // Already avoiding
+
+    // Calculate escape direction (move away from obstacle center)
+    const obstacleX = obstacle.x + obstacle.width / 2;
+    const obstacleY = obstacle.y + obstacle.height / 2;
+
+    // Determine escape direction
+    const escapeX = currentPos[0] - (obstacleX - 0.5) * 4; // Amplify escape
+    const escapeY = currentPos[1] - (obstacleY - 0.5) * 4;
+
+    // Clamp to reasonable bounds
+    const newX = Math.max(-3, Math.min(3, escapeX + (Math.random() - 0.5) * 2));
+    const newY = Math.max(-2, Math.min(2, escapeY + (Math.random() - 0.5) * 1));
+    const newZ = currentPos[2] + (Math.random() - 0.5) * 1;
+
+    // Start escape animation
+    positionAnimationRef.current = {
+      progress: 0,
+      from: currentPos,
+      to: [newX, newY, newZ]
+    };
+
+    setIsAvoidingObstacle(true);
+
+    // Reset avoidance state after animation
+    setTimeout(() => {
+      setIsAvoidingObstacle(false);
+    }, 1000);
+  }, [isAvoidingObstacle]);
+
   // Update every frame
   useFrame((state, delta) => {
     if (!groupRef.current) return;
 
     const time = state.clock.elapsedTime;
+
+    // COLLISION DETECTION: Check for obstacles every 100ms
+    if (enableCollisionDetection && time - lastObstacleCheckRef.current > 0.1) {
+      lastObstacleCheckRef.current = time;
+      const collision = checkCollision(dynamicPosition, state.camera);
+
+      if (collision && !isAvoidingObstacle) {
+        avoidObstacle(collision, dynamicPosition);
+      }
+    }
 
     // Update mixer for embedded GLB animations
     if (mixerRef.current && model) {

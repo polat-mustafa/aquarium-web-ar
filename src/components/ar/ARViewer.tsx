@@ -7,9 +7,21 @@ import { useAppStore } from '@/stores/useAppStore';
 import { CreatureModel } from './CreatureModel';
 import { ARScene } from './ARScene';
 
+interface ObstacleZone {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  depth?: number;
+  type: 'hand' | 'person' | 'object';
+}
+
 interface ARViewerProps {
   debug?: boolean;
   className?: string;
+  obstacleZones?: ObstacleZone[];
+  enableCollisionDetection?: boolean;
 }
 
 // Static camera settings (never change)
@@ -35,7 +47,12 @@ const POINT_LIGHT_POS = [-10, -10, -10] as const;
 const FOG_ARGS = ['#87CEEB', 10, 50] as const;
 const ORBIT_TARGET = [0, 0, 0] as const;
 
-const ARViewer: React.FC<ARViewerProps> = memo(({ debug = false, className = '' }) => {
+const ARViewer: React.FC<ARViewerProps> = memo(({
+  debug = false,
+  className = '',
+  obstacleZones = [],
+  enableCollisionDetection = false
+}) => {
   // CRITICAL: Only select activeCreature, not currentAnimation to prevent unnecessary re-renders
   // Animation state changes should NOT cause Canvas to re-render
   const activeCreature = useAppStore((state) => state.activeCreature);
@@ -96,6 +113,8 @@ const ARViewer: React.FC<ARViewerProps> = memo(({ debug = false, className = '' 
               creature={activeCreature}
               position={activeCreature.position}
               scale={activeCreature.scale}
+              obstacleZones={obstacleZones}
+              enableCollisionDetection={enableCollisionDetection}
             />
           ) : (
             // Keep a placeholder to maintain scene structure
