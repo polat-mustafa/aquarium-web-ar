@@ -15,6 +15,7 @@ interface CreatureModelProps {
   onClick?: () => void;
   obstacleZones?: ObstacleZone[];
   enableCollisionDetection?: boolean;
+  triggerFeedReturn?: number;
 }
 
 // Simple icon fallback for creatures without 3D models
@@ -58,13 +59,14 @@ const IconFallback: React.FC<{ creature: SeaCreature }> = memo(({ creature }) =>
 
 IconFallback.displayName = 'IconFallback';
 
-export const CreatureModel: React.FC<CreatureModelProps> = memo(({
+export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
   creature,
   position,
   scale,
   onClick,
   obstacleZones = [],
   enableCollisionDetection = false,
+  triggerFeedReturn = 0,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
@@ -175,6 +177,22 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
       }
     };
   }, [hasModelPath, creature.modelPath, creature.name]);
+
+  // FEEDING: Watch for feeding trigger and return fish to center
+  useEffect(() => {
+    if (triggerFeedReturn > 0) {
+      // Animate back to center position
+      const centerPos: [number, number, number] = [0, 0, -3];
+      positionAnimationRef.current = {
+        progress: 0,
+        from: dynamicPosition,
+        to: centerPos
+      };
+
+      // Stop any avoidance animations
+      setIsAvoidingObstacle(false);
+    }
+  }, [triggerFeedReturn, dynamicPosition]);
 
   // Handle tap/click on creature
   const handleTap = useCallback(() => {

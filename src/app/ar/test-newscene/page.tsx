@@ -18,6 +18,7 @@ import { getRandomFishFact } from '@/utils/fishFacts';
 import { videoService } from '@/services/VideoRecordingService';
 import { DepthSensingManager, type ObstacleZone, type DepthSensingMode } from '@/utils/depthSensing';
 import ScanningAnimation from '@/components/ar/ScanningAnimation';
+import { EnvironmentScanAnimation } from '@/components/ar/EnvironmentScanAnimation';
 import { getUserFriendlyError, checkAllCapabilities, type DeviceCapabilities } from '@/utils/featureDetection';
 
 function TestNewSceneContent() {
@@ -57,6 +58,15 @@ function TestNewSceneContent() {
   const [showQuickTip, setShowQuickTip] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deviceCapabilities, setDeviceCapabilities] = useState<DeviceCapabilities | null>(null);
+
+  // FEEDING STATES
+  const [isFeedingAnimation, setIsFeedingAnimation] = useState(false);
+  const [feedPosition, setFeedPosition] = useState<[number, number] | null>(null);
+  const [triggerFeedReturn, setTriggerFeedReturn] = useState(0);
+
+  // ENVIRONMENT SCAN STATES
+  const [showEnvironmentScan, setShowEnvironmentScan] = useState(false);
+  const [environmentScanComplete, setEnvironmentScanComplete] = useState(false);
 
   // Privacy Modal State
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -201,6 +211,9 @@ function TestNewSceneContent() {
 
           setCameraError(null);
           setIsCameraReady(true);
+
+          // Trigger environment scan animation on camera ready
+          setShowEnvironmentScan(true);
 
           stopQRDetection = initializeQRDetection(
             videoRef.current,
@@ -363,6 +376,31 @@ function TestNewSceneContent() {
       triggerSpecialAnimation();
     }
   }, [activeCreature, triggerSpecialAnimation]);
+
+  // Feeding handler
+  const handleFeeding = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+
+    // Convert to normalized coordinates
+    const normX = centerX / window.innerWidth;
+    const normY = centerY / window.innerHeight;
+
+    setFeedPosition([normX, normY]);
+    setIsFeedingAnimation(true);
+
+    // Trigger fish to return to center
+    setTriggerFeedReturn(prev => prev + 1);
+
+    // Reset after animation completes
+    setTimeout(() => {
+      setIsFeedingAnimation(false);
+      setFeedPosition(null);
+    }, 2000);
+  }, []);
 
   // Handle screen tap for bubble effects
   const handleScreenTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -591,9 +629,15 @@ function TestNewSceneContent() {
         playsInline
         muted
         {...({ 'webkit-playsinline': 'true' } as any)}
-        style={{
-          transform: 'scaleX(-1)',
-          WebkitTransform: 'scaleX(-1)'
+      />
+
+      {/* Environment Scan Animation on Startup */}
+      <EnvironmentScanAnimation
+        isActive={showEnvironmentScan && !environmentScanComplete}
+        duration={3000}
+        onComplete={() => {
+          setEnvironmentScanComplete(true);
+          setShowEnvironmentScan(false);
         }}
       />
 
@@ -874,6 +918,7 @@ function TestNewSceneContent() {
           className="w-full h-full"
           obstacleZones={obstacleZones}
           enableCollisionDetection={depthSensingMode !== 'none'}
+          triggerFeedReturn={triggerFeedReturn}
         />
 
         {/* Bubble effects */}
@@ -922,8 +967,54 @@ function TestNewSceneContent() {
           </div>
         )}
 
+        {/* Feeding Animation */}
+        {isFeedingAnimation && feedPosition && (
+          <div
+            className="absolute z-30 pointer-events-none"
+            style={{
+              left: `${feedPosition[0] * 100}%`,
+              top: `${feedPosition[1] * 100}%`,
+              transform: 'translate(-50%, -50%)'
+            }}
+          >
+            {/* Food particles */}
+            {[...Array(12)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-3 h-3 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full shadow-lg"
+                style={{
+                  animation: `foodDrop 2s ease-out forwards`,
+                  animationDelay: `${i * 0.1}s`,
+                  left: `${Math.cos((i / 12) * Math.PI * 2) * 20}px`,
+                  top: `${Math.sin((i / 12) * Math.PI * 2) * 20}px`
+                }}
+              />
+            ))}
+            {/* Center glow */}
+            <div className="absolute w-24 h-24 bg-yellow-400/30 rounded-full blur-2xl animate-pulse" style={{ transform: 'translate(-50%, -50%)' }} />
+          </div>
+        )}
+
         {/* AR Controls - Mobile Optimized */}
         <div className="absolute bottom-32 right-4 z-40 flex flex-col space-y-3 pointer-events-auto sm:bottom-36">
+          {/* Feeding Button */}
+          {depthSensingMode !== 'none' && (
+            <button
+              onClick={handleFeeding}
+              onTouchStart={(e) => e.stopPropagation()}
+              disabled={isFeedingAnimation}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all ${
+                isFeedingAnimation
+                  ? 'bg-gradient-to-br from-gray-500 to-gray-600 opacity-50'
+                  : 'bg-gradient-to-br from-yellow-500 to-orange-600 hover:scale-110 active:scale-95'
+              }`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+              aria-label="Feed Fish"
+            >
+              <span className="text-2xl">🍖</span>
+            </button>
+          )}
+
           {/* Photo Capture Button */}
           <button
             onClick={(e) => {
@@ -1111,6 +1202,24 @@ function TestNewSceneContent() {
         onAccept={handlePrivacyAccept}
         onDecline={handlePrivacyDecline}
       />
+
+      {/* Feeding Animation Styles */}
+      <style jsx>{`
+        @keyframes foodDrop {
+          0% {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: translateY(100px) scale(0.8);
+            opacity: 0.8;
+          }
+          100% {
+            transform: translateY(200px) scale(0);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }

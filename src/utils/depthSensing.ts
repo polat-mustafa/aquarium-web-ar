@@ -348,20 +348,17 @@ export class TensorFlowDepthSensor {
       this.videoElement = videoElement;
       this.onObstaclesCallback = onObstacles;
 
+      console.log('🧠 Loading TensorFlow.js...');
       const tf = await import('@tensorflow/tfjs');
       await tf.ready();
+      console.log('✅ TensorFlow.js ready');
 
-      const depthEstimation = await import('@tensorflow-models/depth-estimation');
+      // Use blazeface for face detection (simpler and more reliable)
+      console.log('🧠 Loading BlazeFace model...');
+      const blazeface = await import('@tensorflow-models/blazeface');
+      this.model = await blazeface.load();
 
-      // Load MiDaS model
-      this.model = await depthEstimation.createEstimator(
-        depthEstimation.SupportedModels.ARPortraitDepth,
-        {
-          runtime: 'tfjs',
-        }
-      );
-
-      console.log('✅ TensorFlow depth model loaded');
+      console.log('✅ TensorFlow BlazeFace model loaded');
       this.startProcessing();
     } catch (error) {
       console.error('❌ TensorFlow initialization failed:', error);
@@ -379,8 +376,9 @@ export class TensorFlowDepthSensor {
       try {
         this.isProcessing = true;
 
-        const depthMap = await this.model.estimateDepth(this.videoElement);
-        const obstacles = this.extractObstaclesFromTensorFlow(depthMap);
+        // Detect faces using BlazeFace
+        const predictions = await this.model.estimateFaces(this.videoElement, false);
+        const obstacles = this.extractObstaclesFromFaces(predictions);
         this.onObstaclesCallback?.(obstacles);
 
       } catch (error) {
@@ -398,44 +396,49 @@ export class TensorFlowDepthSensor {
     processFrame();
   }
 
-  private extractObstaclesFromTensorFlow(depthMap: any): ObstacleZone[] {
+  private extractObstaclesFromFaces(predictions: any[]): ObstacleZone[] {
     const obstacles: ObstacleZone[] = [];
 
     try {
-      const width = depthMap.width;
-      const height = depthMap.height;
-      const data = depthMap.toTensor().arraySync();
+      if (!this.videoElement) return [];
 
-      // Simple threshold-based detection
-      const gridSize = 8;
-      const cellWidth = width / gridSize;
-      const cellHeight = height / gridSize;
+      const videoWidth = this.videoElement.videoWidth;
+      const videoHeight = this.videoElement.videoHeight;
 
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          const centerX = Math.floor((x + 0.5) * cellWidth);
-          const centerY = Math.floor((y + 0.5) * cellHeight);
+      // Convert face predictions to obstacle zones
+      predictions.forEach((prediction, index) => {
+        // BlazeFace returns: topLeft, bottomRight, probability
+        const start = prediction.topLeft;
+        const end = prediction.bottomRight;
+        const probability = prediction.probability;
 
-          const depthValue = data[centerY]?.[centerX];
+        if (probability && probability[0] > 0.5) {
+          // Convert to normalized coordinates (0-1)
+          const x = start[0] / videoWidth;
+          const y = start[1] / videoHeight;
+          const width = (end[0] - start[0]) / videoWidth;
+          const height = (end[1] - start[1]) / videoHeight;
 
-          if (depthValue && depthValue < 0.7) {
-            obstacles.push({
-              id: `tf-${x}-${y}`,
-              x: x / gridSize,
-              y: y / gridSize,
-              width: 1 / gridSize,
-              height: 1 / gridSize,
-              depth: depthValue * 5,
-              type: 'object',
-              confidence: 0.7
-            });
-          }
+          // Estimate depth based on face size (larger = closer)
+          const faceArea = width * height;
+          const estimatedDepth = Math.max(0.5, Math.min(5, 1 / (faceArea * 10)));
+
+          obstacles.push({
+            id: `face-${index}`,
+            x: x,
+            y: y,
+            width: width,
+            height: height,
+            depth: estimatedDepth,
+            type: 'person',
+            confidence: probability[0]
+          });
         }
-      }
+      });
 
-      return obstacles.filter((_, index) => obstacles.length < 10 || index % 2 === 0);
+      return obstacles;
     } catch (error) {
-      console.error('Error extracting obstacles:', error);
+      console.error('Error extracting obstacles from faces:', error);
       return [];
     }
   }
