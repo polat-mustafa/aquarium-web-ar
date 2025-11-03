@@ -62,6 +62,8 @@ function TestNewSceneContent() {
   const [showDepthVisualization, setShowDepthVisualization] = useState(true);
   const [mediaPipeReady, setMediaPipeReady] = useState(false);
   const mediaPipeWorkerRef = useRef<any>(null);
+  const [showControlPanel, setShowControlPanel] = useState(false);
+  const [showQuickTip, setShowQuickTip] = useState(true);
 
   // Privacy Modal State
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -115,8 +117,15 @@ function TestNewSceneContent() {
   useEffect(() => {
     document.body.setAttribute('data-page', 'ar-test');
     hideGlobalLoading();
+
+    // Hide quick tip after 5 seconds
+    const tipTimer = setTimeout(() => {
+      setShowQuickTip(false);
+    }, 5000);
+
     return () => {
       document.body.removeAttribute('data-page');
+      clearTimeout(tipTimer);
     };
   }, []);
 
@@ -618,81 +627,139 @@ function TestNewSceneContent() {
         }}
       />
 
-      {/* Test Mode Banner */}
-      <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
-        <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white px-6 py-2 rounded-full border-2 border-yellow-300/50 shadow-2xl">
-          <div className="flex items-center space-x-2">
-            <span className="text-xl">🧪</span>
-            <span className="font-bold text-sm uppercase tracking-wider">Test Mode - Depth Sensing</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Depth Sensing Controls Panel */}
-      <div className="fixed top-20 left-4 z-50 bg-black/80 backdrop-blur-xl rounded-2xl p-4 border border-cyan-500/30 max-w-xs pointer-events-auto">
-        <h3 className="text-cyan-300 font-bold text-sm mb-3 flex items-center">
-          <span className="mr-2">🎯</span>
-          Depth Sensing Options
-        </h3>
-
-        <div className="space-y-2">
-          <button
-            onClick={() => handleDepthModeChange('none')}
-            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-              depthSensingMode === 'none'
-                ? 'bg-cyan-500 text-white'
-                : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
-            }`}
-          >
-            🚫 Disabled
-          </button>
-
-          <button
-            onClick={() => handleDepthModeChange('mediapipe')}
-            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-              depthSensingMode === 'mediapipe'
-                ? 'bg-green-500 text-white'
-                : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
-            }`}
-          >
-            ✋ MediaPipe Hands {mediaPipeReady && '(Active)'}
-          </button>
-
-          <button
-            onClick={() => handleDepthModeChange('webxr')}
-            disabled
-            className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium bg-slate-800/50 text-slate-500 cursor-not-allowed"
-          >
-            🥽 WebXR Depth (Coming Soon)
-          </button>
-
-          <button
-            onClick={() => handleDepthModeChange('tensorflow')}
-            disabled
-            className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium bg-slate-800/50 text-slate-500 cursor-not-allowed"
-          >
-            🧠 TensorFlow.js (Coming Soon)
-          </button>
-        </div>
-
-        {depthSensingMode !== 'none' && (
-          <div className="mt-3 pt-3 border-t border-slate-600">
-            <label className="flex items-center space-x-2 text-xs text-slate-300">
-              <input
-                type="checkbox"
-                checked={showDepthVisualization}
-                onChange={(e) => setShowDepthVisualization(e.target.checked)}
-                className="rounded"
-              />
-              <span>Show Detection Zones</span>
-            </label>
+      {/* Floating Control Button - Mobile Friendly */}
+      <div className="fixed top-20 right-4 z-50 flex flex-col items-end space-y-2 pointer-events-auto">
+        {/* Quick tip tooltip */}
+        {showQuickTip && !showControlPanel && (
+          <div className="mr-16 bg-gradient-to-r from-orange-500/95 to-red-500/95 backdrop-blur-md px-4 py-2 rounded-lg shadow-2xl border border-yellow-300/30 animate-slideDown">
+            <p className="text-white text-xs font-medium whitespace-nowrap">
+              👈 Tap to enable depth sensing
+            </p>
           </div>
         )}
 
-        <div className="mt-3 pt-3 border-t border-slate-600 text-xs text-slate-400">
-          <p>Obstacles detected: <span className="text-cyan-300 font-bold">{obstacleZones.length}</span></p>
-        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowControlPanel(!showControlPanel);
+            setShowQuickTip(false);
+          }}
+          onTouchStart={(e) => e.stopPropagation()}
+          className="relative w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-2xl border-2 border-yellow-300/50 active:scale-95 transition-transform"
+          style={{ WebkitTapHighlightColor: 'transparent' }}
+          aria-label="Toggle Controls"
+        >
+          <span className="text-2xl">{showControlPanel ? '✕' : '🧪'}</span>
+          {/* Active indicator when depth sensing is on */}
+          {depthSensingMode !== 'none' && !showControlPanel && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
+          )}
+        </button>
+
+        {/* Status badge when panel is closed */}
+        {!showControlPanel && depthSensingMode !== 'none' && (
+          <div className="bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-green-500/30 shadow-xl animate-slideDown">
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xs">✋</span>
+              <span className="text-xs text-green-300 font-medium">{obstacleZones.length}</span>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Depth Sensing Controls Panel - Collapsible & Mobile Optimized */}
+      {showControlPanel && (
+        <div className="fixed inset-x-4 top-32 z-50 bg-black/95 backdrop-blur-xl rounded-2xl p-4 border border-cyan-500/30 max-w-sm mx-auto pointer-events-auto shadow-2xl animate-slideDown">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-cyan-300 font-bold text-xs sm:text-sm flex items-center">
+              <span className="mr-2">🎯</span>
+              Depth Sensing
+            </h3>
+            <span className="text-xs text-slate-400">
+              {obstacleZones.length} detected
+            </span>
+          </div>
+
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDepthModeChange('none');
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                depthSensingMode === 'none'
+                  ? 'bg-cyan-500 text-white shadow-lg'
+                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
+              }`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              🚫 Disabled
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDepthModeChange('mediapipe');
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                depthSensingMode === 'mediapipe'
+                  ? 'bg-green-500 text-white shadow-lg'
+                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
+              }`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              <div className="flex items-center justify-between">
+                <span>✋ MediaPipe</span>
+                {mediaPipeReady && <span className="text-xs bg-green-600 px-2 py-0.5 rounded">Active</span>}
+              </div>
+            </button>
+
+            <button
+              disabled
+              className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium bg-slate-800/50 text-slate-500 cursor-not-allowed"
+            >
+              🥽 WebXR (Soon)
+            </button>
+
+            <button
+              disabled
+              className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium bg-slate-800/50 text-slate-500 cursor-not-allowed"
+            >
+              🧠 TensorFlow (Soon)
+            </button>
+          </div>
+
+          {depthSensingMode !== 'none' && (
+            <div className="mt-3 pt-3 border-t border-slate-600">
+              <label className="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showDepthVisualization}
+                  onChange={(e) => setShowDepthVisualization(e.target.checked)}
+                  className="rounded w-4 h-4"
+                />
+                <span>Show Detection Zones</span>
+              </label>
+            </div>
+          )}
+
+          <div className="mt-3 text-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowControlPanel(false);
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              Close Panel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Obstacle Zone Visualization */}
       {showDepthVisualization && obstacleZones.length > 0 && (
@@ -805,8 +872,8 @@ function TestNewSceneContent() {
           </div>
         )}
 
-        {/* AR Controls */}
-        <div className="absolute bottom-32 right-4 z-40 flex flex-col space-y-3 pointer-events-auto">
+        {/* AR Controls - Mobile Optimized */}
+        <div className="absolute bottom-32 right-4 z-40 flex flex-col space-y-3 pointer-events-auto sm:bottom-36">
           {/* Photo Capture Button */}
           <button
             onClick={(e) => {
