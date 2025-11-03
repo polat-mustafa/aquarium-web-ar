@@ -16,19 +16,8 @@ import type { QRDetectionResult } from '@/utils/qrDetection';
 import { hideGlobalLoading } from '@/components/ui/LoadingOverlay';
 import { getRandomFishFact } from '@/utils/fishFacts';
 import { videoService } from '@/services/VideoRecordingService';
-
-// Depth sensing detection types
-type DepthSensingMode = 'mediapipe' | 'webxr' | 'tensorflow' | 'none';
-
-interface ObstacleZone {
-  id: string;
-  x: number; // normalized 0-1
-  y: number; // normalized 0-1
-  width: number;
-  height: number;
-  depth?: number; // estimated depth in meters
-  type: 'hand' | 'person' | 'object';
-}
+import { DepthSensingManager, type ObstacleZone, type DepthSensingMode } from '@/utils/depthSensing';
+import ScanningAnimation from '@/components/ar/ScanningAnimation';
 
 function TestNewSceneContent() {
   // CRITICAL FIX: Extract creature ID once with useMemo to prevent infinite re-renders
@@ -60,10 +49,12 @@ function TestNewSceneContent() {
   const [depthSensingMode, setDepthSensingMode] = useState<DepthSensingMode>('none');
   const [obstacleZones, setObstacleZones] = useState<ObstacleZone[]>([]);
   const [showDepthVisualization, setShowDepthVisualization] = useState(true);
-  const [mediaPipeReady, setMediaPipeReady] = useState(false);
-  const mediaPipeWorkerRef = useRef<any>(null);
+  const [showScanningAnimation, setShowScanningAnimation] = useState(true);
+  const [depthSensorReady, setDepthSensorReady] = useState(false);
+  const depthManagerRef = useRef<DepthSensingManager>(new DepthSensingManager());
   const [showControlPanel, setShowControlPanel] = useState(false);
   const [showQuickTip, setShowQuickTip] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Privacy Modal State
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -297,95 +288,42 @@ function TestNewSceneContent() {
     }
   }, [setActiveCreature]);
 
-  // DEPTH SENSING: Initialize MediaPipe
-  const initializeMediaPipe = useCallback(async () => {
-    try {
-      // Dynamic import of MediaPipe
-      const { Hands, HAND_CONNECTIONS } = await import('@mediapipe/hands');
-      const { Camera } = await import('@mediapipe/camera_utils');
-
-      if (!videoRef.current) return;
-
-      const hands = new Hands({
-        locateFile: (file) => {
-          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-        }
-      });
-
-      hands.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
-
-      hands.onResults((results: any) => {
-        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-          const newObstacles: ObstacleZone[] = results.multiHandLandmarks.map((landmarks: any, index: number) => {
-            // Calculate bounding box from landmarks
-            const xs = landmarks.map((lm: any) => lm.x);
-            const ys = landmarks.map((lm: any) => lm.y);
-            const minX = Math.min(...xs);
-            const maxX = Math.max(...xs);
-            const minY = Math.min(...ys);
-            const maxY = Math.max(...ys);
-
-            // Add padding
-            const padding = 0.05;
-            return {
-              id: `hand-${index}`,
-              x: Math.max(0, minX - padding),
-              y: Math.max(0, minY - padding),
-              width: Math.min(1, maxX - minX + padding * 2),
-              height: Math.min(1, maxY - minY + padding * 2),
-              type: 'hand' as const
-            };
-          });
-
-          setObstacleZones(newObstacles);
-        } else {
-          setObstacleZones([]);
-        }
-      });
-
-      const camera = new Camera(videoRef.current, {
-        onFrame: async () => {
-          if (videoRef.current) {
-            await hands.send({ image: videoRef.current });
-          }
-        },
-        width: 1280,
-        height: 720
-      });
-
-      camera.start();
-      mediaPipeWorkerRef.current = { hands, camera };
-      setMediaPipeReady(true);
-
-      console.log('✅ MediaPipe initialized successfully');
-    } catch (error) {
-      console.error('❌ MediaPipe initialization failed:', error);
-    }
-  }, []);
-
   // DEPTH SENSING: Handle mode change
-  const handleDepthModeChange = useCallback((mode: DepthSensingMode) => {
+  const handleDepthModeChange = useCallback(async (mode: DepthSensingMode) => {
     setDepthSensingMode(mode);
-
-    // Clean up previous mode
-    if (mediaPipeWorkerRef.current) {
-      mediaPipeWorkerRef.current.camera?.stop();
-      mediaPipeWorkerRef.current = null;
-      setMediaPipeReady(false);
-    }
-
-    // Initialize new mode
-    if (mode === 'mediapipe' && isCameraReady) {
-      initializeMediaPipe();
-    }
-
+    setErrorMessage(null);
+    setDepthSensorReady(false);
     setObstacleZones([]);
-  }, [isCameraReady, initializeMediaPipe]);
+
+    if (mode === 'none' || !videoRef.current || !isCameraReady) {
+      depthManagerRef.current.stop();
+      return;
+    }
+
+    try {
+      await depthManagerRef.current.setMode(
+        mode,
+        videoRef.current,
+        (zones: ObstacleZone[]) => {
+          setObstacleZones(zones);
+        }
+      );
+
+      setDepthSensorReady(true);
+      console.log(`✅ ${mode.toUpperCase()} initialized successfully`);
+    } catch (error: any) {
+      console.error(`❌ ${mode} initialization failed:`, error);
+      setErrorMessage(error.message || `Failed to initialize ${mode}`);
+      setDepthSensingMode('none');
+    }
+  }, [isCameraReady]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      depthManagerRef.current.stop();
+    };
+  }, []);
 
   // Creature tap handler
   const handleCreatureTap = useCallback(() => {
@@ -711,28 +649,58 @@ function TestNewSceneContent() {
               style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               <div className="flex items-center justify-between">
-                <span>✋ MediaPipe</span>
-                {mediaPipeReady && <span className="text-xs bg-green-600 px-2 py-0.5 rounded">Active</span>}
+                <span>✋ MediaPipe Hands</span>
+                {depthSensingMode === 'mediapipe' && depthSensorReady && (
+                  <span className="text-xs bg-green-600 px-2 py-0.5 rounded">Active</span>
+                )}
               </div>
             </button>
 
             <button
-              disabled
-              className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium bg-slate-800/50 text-slate-500 cursor-not-allowed"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDepthModeChange('webxr');
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                depthSensingMode === 'webxr'
+                  ? 'bg-cyan-500 text-white shadow-lg'
+                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
+              }`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              🥽 WebXR (Soon)
+              <div className="flex items-center justify-between">
+                <span>🥽 WebXR Depth</span>
+                {depthSensingMode === 'webxr' && depthSensorReady && (
+                  <span className="text-xs bg-cyan-600 px-2 py-0.5 rounded">Active</span>
+                )}
+              </div>
             </button>
 
             <button
-              disabled
-              className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium bg-slate-800/50 text-slate-500 cursor-not-allowed"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDepthModeChange('tensorflow');
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                depthSensingMode === 'tensorflow'
+                  ? 'bg-purple-500 text-white shadow-lg'
+                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
+              }`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              🧠 TensorFlow (Soon)
+              <div className="flex items-center justify-between">
+                <span>🧠 TensorFlow.js</span>
+                {depthSensingMode === 'tensorflow' && depthSensorReady && (
+                  <span className="text-xs bg-purple-600 px-2 py-0.5 rounded">Active</span>
+                )}
+              </div>
             </button>
           </div>
 
           {depthSensingMode !== 'none' && (
-            <div className="mt-3 pt-3 border-t border-slate-600">
+            <div className="mt-3 pt-3 border-t border-slate-600 space-y-2">
               <label className="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
                 <input
                   type="checkbox"
@@ -742,6 +710,23 @@ function TestNewSceneContent() {
                 />
                 <span>Show Detection Zones</span>
               </label>
+              <label className="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showScanningAnimation}
+                  onChange={(e) => setShowScanningAnimation(e.target.checked)}
+                  className="rounded w-4 h-4"
+                />
+                <span>Show Scanning Animation</span>
+              </label>
+            </div>
+          )}
+
+          {errorMessage && (
+            <div className="mt-3 pt-3 border-t border-red-500/30">
+              <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-2">
+                <p className="text-red-300 text-xs">{errorMessage}</p>
+              </div>
             </div>
           )}
 
@@ -761,27 +746,53 @@ function TestNewSceneContent() {
         </div>
       )}
 
+      {/* Scanning Animation */}
+      {showScanningAnimation && depthSensingMode !== 'none' && depthSensorReady && (
+        <ScanningAnimation
+          isActive={true}
+          mode={depthSensingMode}
+          obstacleCount={obstacleZones.length}
+        />
+      )}
+
       {/* Obstacle Zone Visualization */}
       {showDepthVisualization && obstacleZones.length > 0 && (
         <div className="fixed inset-0 z-25 pointer-events-none">
-          {obstacleZones.map((zone) => (
-            <div
-              key={zone.id}
-              className="absolute border-2 rounded-lg"
-              style={{
-                left: `${zone.x * 100}%`,
-                top: `${zone.y * 100}%`,
-                width: `${zone.width * 100}%`,
-                height: `${zone.height * 100}%`,
-                borderColor: zone.type === 'hand' ? '#00ff00' : '#ff00ff',
-                backgroundColor: zone.type === 'hand' ? 'rgba(0, 255, 0, 0.1)' : 'rgba(255, 0, 255, 0.1)',
-              }}
-            >
-              <span className="absolute -top-6 left-0 text-xs font-bold text-white bg-black/70 px-2 py-1 rounded">
-                {zone.type}
-              </span>
-            </div>
-          ))}
+          {obstacleZones.map((zone) => {
+            const getZoneColor = () => {
+              switch (zone.type) {
+                case 'hand': return { border: '#00ff00', bg: 'rgba(0, 255, 0, 0.15)' };
+                case 'person': return { border: '#00ffff', bg: 'rgba(0, 255, 255, 0.15)' };
+                case 'object': return { border: '#ff00ff', bg: 'rgba(255, 0, 255, 0.15)' };
+              }
+            };
+            const colors = getZoneColor();
+
+            return (
+              <div
+                key={zone.id}
+                className="absolute border-2 rounded-lg transition-all duration-300"
+                style={{
+                  left: `${zone.x * 100}%`,
+                  top: `${zone.y * 100}%`,
+                  width: `${zone.width * 100}%`,
+                  height: `${zone.height * 100}%`,
+                  borderColor: colors.border,
+                  backgroundColor: colors.bg,
+                  boxShadow: `0 0 20px ${colors.border}40`,
+                }}
+              >
+                <span
+                  className="absolute -top-8 left-0 text-xs font-bold text-white bg-black/80 px-2 py-1 rounded backdrop-blur-sm"
+                  style={{ border: `1px solid ${colors.border}` }}
+                >
+                  {zone.type.toUpperCase()}
+                  {zone.depth && ` | ${zone.depth.toFixed(2)}m`}
+                  {zone.confidence && ` | ${Math.round(zone.confidence * 100)}%`}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
 

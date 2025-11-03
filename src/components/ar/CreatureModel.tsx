@@ -6,16 +6,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 import type { SeaCreature, AnimationState } from '@/types';
 import { useAppStore } from '@/stores/useAppStore';
-
-interface ObstacleZone {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  depth?: number;
-  type: 'hand' | 'person' | 'object';
-}
+import { checkCollision, calculateAvoidanceVector, type ObstacleZone } from '@/utils/depthSensing';
 
 interface CreatureModelProps {
   creature: SeaCreature;
@@ -225,55 +216,17 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
     }
   }, [isTurning, onClick, setShowSpeechBubble, position, dynamicPosition, speechBubbleDuration, creature.name]);
 
-  // COLLISION DETECTION: Check if creature is colliding with obstacles
-  const checkCollision = useCallback((currentPos: [number, number, number], camera: THREE.Camera) => {
-    if (!enableCollisionDetection || obstacleZones.length === 0) return null;
-
-    // Project creature's 3D position to 2D screen space
-    const creatureWorldPos = new THREE.Vector3(currentPos[0], currentPos[1], currentPos[2]);
-    const creatureScreenPos = creatureWorldPos.project(camera);
-
-    // Convert from normalized device coordinates [-1, 1] to screen space [0, 1]
-    const creatureX = (creatureScreenPos.x + 1) / 2;
-    const creatureY = (-creatureScreenPos.y + 1) / 2; // Invert Y
-
-    // Check collision with each obstacle zone
-    for (const zone of obstacleZones) {
-      const zoneRight = zone.x + zone.width;
-      const zoneBottom = zone.y + zone.height;
-
-      // Add padding for detection sensitivity
-      const padding = 0.05;
-
-      if (
-        creatureX >= zone.x - padding &&
-        creatureX <= zoneRight + padding &&
-        creatureY >= zone.y - padding &&
-        creatureY <= zoneBottom + padding
-      ) {
-        return zone;
-      }
-    }
-
-    return null;
-  }, [enableCollisionDetection, obstacleZones]);
-
   // COLLISION AVOIDANCE: Move fish away from obstacle
-  const avoidObstacle = useCallback((obstacle: ObstacleZone, currentPos: [number, number, number]) => {
+  const avoidObstacle = useCallback((obstacle: ObstacleZone, currentPos: [number, number, number], camera: THREE.Camera) => {
     if (isAvoidingObstacle) return; // Already avoiding
 
-    // Calculate escape direction (move away from obstacle center)
-    const obstacleX = obstacle.x + obstacle.width / 2;
-    const obstacleY = obstacle.y + obstacle.height / 2;
-
-    // Determine escape direction
-    const escapeX = currentPos[0] - (obstacleX - 0.5) * 4; // Amplify escape
-    const escapeY = currentPos[1] - (obstacleY - 0.5) * 4;
+    const currentPosVec = new THREE.Vector3(currentPos[0], currentPos[1], currentPos[2]);
+    const targetPosVec = calculateAvoidanceVector(currentPosVec, obstacle, camera);
 
     // Clamp to reasonable bounds
-    const newX = Math.max(-3, Math.min(3, escapeX + (Math.random() - 0.5) * 2));
-    const newY = Math.max(-2, Math.min(2, escapeY + (Math.random() - 0.5) * 1));
-    const newZ = currentPos[2] + (Math.random() - 0.5) * 1;
+    const newX = Math.max(-3, Math.min(3, targetPosVec.x));
+    const newY = Math.max(-2, Math.min(2, targetPosVec.y));
+    const newZ = Math.max(-5, Math.min(-1, targetPosVec.z));
 
     // Start escape animation
     positionAnimationRef.current = {
@@ -287,7 +240,7 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
     // Reset avoidance state after animation
     setTimeout(() => {
       setIsAvoidingObstacle(false);
-    }, 1000);
+    }, 1200);
   }, [isAvoidingObstacle]);
 
   // Update every frame
@@ -297,12 +250,14 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo(({
     const time = state.clock.elapsedTime;
 
     // COLLISION DETECTION: Check for obstacles every 100ms
-    if (enableCollisionDetection && time - lastObstacleCheckRef.current > 0.1) {
+    if (enableCollisionDetection && obstacleZones && obstacleZones.length > 0 && time - lastObstacleCheckRef.current > 0.1) {
       lastObstacleCheckRef.current = time;
-      const collision = checkCollision(dynamicPosition, state.camera);
+
+      const currentPosVec = new THREE.Vector3(dynamicPosition[0], dynamicPosition[1], dynamicPosition[2]);
+      const collision = checkCollision(currentPosVec, state.camera, obstacleZones, 0.08);
 
       if (collision && !isAvoidingObstacle) {
-        avoidObstacle(collision, dynamicPosition);
+        avoidObstacle(collision, dynamicPosition, state.camera);
       }
     }
 
