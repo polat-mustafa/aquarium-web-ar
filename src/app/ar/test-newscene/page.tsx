@@ -18,6 +18,7 @@ import { getRandomFishFact } from '@/utils/fishFacts';
 import { videoService } from '@/services/VideoRecordingService';
 import { DepthSensingManager, type ObstacleZone, type DepthSensingMode } from '@/utils/depthSensing';
 import ScanningAnimation from '@/components/ar/ScanningAnimation';
+import { getUserFriendlyError, checkAllCapabilities, type DeviceCapabilities } from '@/utils/featureDetection';
 
 function TestNewSceneContent() {
   // CRITICAL FIX: Extract creature ID once with useMemo to prevent infinite re-renders
@@ -55,6 +56,7 @@ function TestNewSceneContent() {
   const [showControlPanel, setShowControlPanel] = useState(false);
   const [showQuickTip, setShowQuickTip] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [deviceCapabilities, setDeviceCapabilities] = useState<DeviceCapabilities | null>(null);
 
   // Privacy Modal State
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -108,6 +110,12 @@ function TestNewSceneContent() {
   useEffect(() => {
     document.body.setAttribute('data-page', 'ar-test');
     hideGlobalLoading();
+
+    // Check device capabilities
+    checkAllCapabilities().then(caps => {
+      setDeviceCapabilities(caps);
+      console.log('Device capabilities:', caps);
+    });
 
     // Hide quick tip after 5 seconds
     const tipTimer = setTimeout(() => {
@@ -336,8 +344,8 @@ function TestNewSceneContent() {
       console.log(`✅ ${mode.toUpperCase()} initialized successfully`);
     } catch (error: any) {
       console.error(`❌ ${mode} initialization failed:`, error);
-      const errorMsg = error.message || `Failed to initialize ${mode}`;
-      setErrorMessage(errorMsg);
+      const userFriendlyMsg = getUserFriendlyError(mode, error);
+      setErrorMessage(userFriendlyMsg);
       setDepthSensingMode('none');
     }
   }, [isCameraReady]);
@@ -689,14 +697,21 @@ function TestNewSceneContent() {
               className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                 depthSensingMode === 'webxr'
                   ? 'bg-cyan-500 text-white shadow-lg'
+                  : deviceCapabilities?.webxr.supported === false
+                  ? 'bg-slate-800/50 text-slate-400'
                   : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
               }`}
               style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              <div className="flex items-center justify-between">
-                <span>🥽 WebXR Depth</span>
-                {depthSensingMode === 'webxr' && depthSensorReady && (
-                  <span className="text-xs bg-cyan-600 px-2 py-0.5 rounded">Active</span>
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between">
+                  <span>🥽 WebXR Depth</span>
+                  {depthSensingMode === 'webxr' && depthSensorReady && (
+                    <span className="text-xs bg-cyan-600 px-2 py-0.5 rounded">Active</span>
+                  )}
+                </div>
+                {deviceCapabilities?.webxr.supported === false && (
+                  <span className="text-[10px] text-slate-500 mt-1">Quest 3 or ARCore required</span>
                 )}
               </div>
             </button>

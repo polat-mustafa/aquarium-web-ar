@@ -161,25 +161,42 @@ export class WebXRDepthSensor {
 
   async initialize(onDepthFrame: (frame: DepthFrame, obstacles: ObstacleZone[]) => void): Promise<void> {
     try {
+      // Check if WebXR is available
       if (!('xr' in navigator)) {
-        throw new Error('WebXR not supported in this browser');
+        throw new Error('WebXR not available in this browser. Use Chrome or Edge on Android/Quest.');
       }
 
-      const isSupported = await (navigator as any).xr?.isSessionSupported?.('immersive-ar');
-      if (!isSupported) {
-        throw new Error('Immersive AR not supported');
+      // Check if XR API is properly initialized
+      const xr = (navigator as any).xr;
+      if (!xr || !xr.isSessionSupported) {
+        throw new Error('WebXR API not initialized. Try opening in an immersive browser.');
+      }
+
+      // Check if immersive-ar is supported
+      const isARSupported = await xr.isSessionSupported('immersive-ar');
+      if (!isARSupported) {
+        throw new Error('WebXR AR not supported on this device. Requires Quest 3 or ARCore device.');
       }
 
       this.onDepthFrameCallback = onDepthFrame;
 
-      this.session = await (navigator as any).xr.requestSession('immersive-ar', {
-        requiredFeatures: ['depth-sensing', 'hit-test'],
-        optionalFeatures: ['dom-overlay'],
-        depthSensing: {
-          usagePreference: ['cpu-optimized', 'gpu-optimized'],
-          dataFormatPreference: ['luminance-alpha', 'float32']
+      // Try to request session with depth sensing
+      try {
+        this.session = await xr.requestSession('immersive-ar', {
+          requiredFeatures: ['depth-sensing'],
+          optionalFeatures: ['hit-test', 'dom-overlay'],
+          depthSensing: {
+            usagePreference: ['cpu-optimized', 'gpu-optimized'],
+            dataFormatPreference: ['luminance-alpha', 'float32']
+          }
+        });
+      } catch (sessionError: any) {
+        // More specific error for depth sensing
+        if (sessionError.message.includes('configuration')) {
+          throw new Error('Depth sensing not available. Requires Quest 3, Quest 3S, or ARCore-enabled Android device.');
         }
-      });
+        throw new Error(`WebXR session failed: ${sessionError.message}`);
+      }
 
       this.session.addEventListener('end', () => {
         this.session = null;
@@ -187,7 +204,7 @@ export class WebXRDepthSensor {
 
       console.log('✅ WebXR Depth Sensing initialized');
       this.startDepthProcessing();
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ WebXR initialization failed:', error);
       throw error;
     }
