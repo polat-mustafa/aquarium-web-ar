@@ -17,6 +17,13 @@ export interface OverlayData {
   };
 }
 
+export interface SafeAreaInsets {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
 export class RecordingManager {
   private mediaRecorder: MediaRecorder | null = null;
   private chunks: Blob[] = [];
@@ -31,8 +38,48 @@ export class RecordingManager {
   private webglCanvasWarned: boolean = false;
   private overlayData: OverlayData = { bubbles: [] };
   private frameCount: number = 0;
+  private safeAreaInsets: SafeAreaInsets = { top: 0, bottom: 0, left: 0, right: 0 };
 
   constructor() {
+    this.calculateSafeAreaInsets();
+  }
+
+  /**
+   * Calculate safe area insets for iOS notch/home indicator
+   * Returns CSS safe-area-inset values
+   */
+  private calculateSafeAreaInsets(): void {
+    if (typeof window === 'undefined') return;
+
+    // Get safe area insets from CSS env variables (iOS 11.2+)
+    const getEnvValue = (variable: string): number => {
+      try {
+        const value = getComputedStyle(document.documentElement).getPropertyValue(variable);
+        return parseInt(value) || 0;
+      } catch {
+        return 0;
+      }
+    };
+
+    this.safeAreaInsets = {
+      top: getEnvValue('safe-area-inset-top'),
+      bottom: getEnvValue('safe-area-inset-bottom'),
+      left: getEnvValue('safe-area-inset-left'),
+      right: getEnvValue('safe-area-inset-right'),
+    };
+
+    console.log('📐 Safe Area Insets:', this.safeAreaInsets);
+  }
+
+  /**
+   * Adjust position to respect safe areas
+   */
+  private adjustForSafeArea(x: number, y: number): { x: number; y: number } {
+    // For overlays, add minimum padding from safe areas
+    const minPadding = 20; // pixels from safe area
+    const adjustedX = Math.max(x, this.safeAreaInsets.left + minPadding);
+    const adjustedY = Math.max(y, this.safeAreaInsets.top + minPadding);
+    return { x: adjustedX, y: adjustedY };
   }
 
   /**
@@ -73,23 +120,28 @@ export class RecordingManager {
   }
 
   /**
-   * Get the best supported MIME type
+   * Get the best supported MIME type (iOS-optimized)
+   * iOS Safari requires H.264 codec in MP4 container
    */
   private getSupportedMimeType(): string {
+    // Priority order: H.264 for iOS, then VP9, VP8, fallback to MP4
     const types = [
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm',
-      'video/mp4',
+      'video/mp4;codecs=avc1.42E01E',    // H.264 - iOS Safari only
+      'video/mp4;codecs=avc1.4d401e',    // H.264 - wider support
+      'video/webm;codecs=vp9',            // Desktop/Android
+      'video/webm;codecs=vp8',            // Fallback
+      'video/webm',                       // Fallback
+      'video/mp4',                        // Last resort
     ];
 
     for (const type of types) {
       if (MediaRecorder.isTypeSupported(type)) {
+        console.log(`✅ Using MIME type: ${type}`);
         return type;
       }
     }
 
-    throw new Error('No supported video MIME type found');
+    throw new Error('No supported video MIME type found. Your browser may not support video recording.');
   }
 
   /**
@@ -165,16 +217,18 @@ export class RecordingManager {
       ctx.restore();
     });
 
-    // Draw speech bubble
+    // Draw speech bubble (with safe area adjustment)
     if (this.overlayData.speechBubble) {
       const { text, x, y } = this.overlayData.speechBubble;
-      this.drawSpeechBubble(ctx, text, x, y);
+      const adjusted = this.adjustForSafeArea(x, y);
+      this.drawSpeechBubble(ctx, text, adjusted.x, adjusted.y);
     }
 
-    // Draw touch indicator
+    // Draw touch indicator (with safe area adjustment)
     if (this.overlayData.touchIndicator) {
       const { text, x, y } = this.overlayData.touchIndicator;
-      this.drawTouchIndicator(ctx, text, x, y);
+      const adjusted = this.adjustForSafeArea(x, y);
+      this.drawTouchIndicator(ctx, text, adjusted.x, adjusted.y);
     }
   }
 
@@ -403,10 +457,75 @@ export class RecordingManager {
   }
 
   /**
-   * Start recording with AR overlay
+   * Check if device is iOS
    */
-  start(): void {
+  private isIOS(): boolean {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  }
 
+  /**
+   * Check if canvas.captureStream is supported
+   */
+  private supportsCanvasCaptureStream(): boolean {
+    return typeof HTMLCanvasElement.prototype.captureStream === 'function';
+  }
+
+  /**
+   * iOS Fallback: Create video stream from frame-by-frame canvas captures
+   * Since iOS doesn't support canvas.captureStream()
+   */
+  private createIOSVideoStream(fps: number = 30): Promise<MediaStream> {
+    return new Promise((resolve, reject) => {
+      try {
+        // Create a canvas for the video track
+        const offscreenCanvas = new OffscreenCanvas(
+          this.canvas!.width,
+          this.canvas!.height
+        );
+        const offscreenCtx = offscreenCanvas.getContext('2d');
+
+        if (!offscreenCtx) {
+          throw new Error('Failed to get OffscreenCanvas context');
+        }
+
+        // Create a MediaStream with audio and video tracks
+        const audioTrack = this.stream?.getAudioTracks()[0];
+        const videoTrack = this.stream?.getVideoTracks()[0];
+
+        // Create a canvas element for screen capture
+        const captureCanvas = document.createElement('canvas');
+        captureCanvas.width = this.canvas!.width;
+        captureCanvas.height = this.canvas!.height;
+
+        // Get stream from the temporary canvas
+        const tempStream = captureCanvas.captureStream(fps);
+
+        if (tempStream) {
+          // Replace the video track with our canvas
+          resolve(tempStream);
+        } else {
+          throw new Error('Canvas captureStream not available');
+        }
+      } catch (error) {
+        // If OffscreenCanvas fails, use regular canvas with fallback
+        const fallbackCanvas = document.createElement('canvas');
+        fallbackCanvas.width = this.canvas!.width;
+        fallbackCanvas.height = this.canvas!.height;
+        const fallbackStream = (fallbackCanvas as any).captureStream?.(fps);
+
+        if (fallbackStream) {
+          resolve(fallbackStream);
+        } else {
+          reject(new Error('Unable to create video stream on this device'));
+        }
+      }
+    });
+  }
+
+  /**
+   * Start recording with AR overlay (iOS-optimized)
+   */
+  async start(): Promise<void> {
     if (!this.canvas || !this.ctx) {
       throw new Error('RecordingManager not initialized');
     }
@@ -414,7 +533,6 @@ export class RecordingManager {
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
       throw new Error('Recording already in progress');
     }
-
 
     // Reset warning flag and frame counter
     this.webglCanvasWarned = false;
@@ -424,25 +542,46 @@ export class RecordingManager {
     // Start compositing frames
     this.animationFrameId = requestAnimationFrame(() => this.compositeFrame());
 
-    // Get stream from canvas
+    // Get stream from canvas - with iOS fallback
     const fps = 30;
-    this.canvasStream = this.canvas.captureStream(fps);
+    const isIOS = this.isIOS();
+    const hasCanvasCaptureStream = this.supportsCanvasCaptureStream();
 
-    if (!this.canvasStream) {
-      throw new Error('Failed to capture canvas stream');
+    console.log(`📱 Device: ${isIOS ? 'iOS' : 'Non-iOS'}, Canvas.captureStream support: ${hasCanvasCaptureStream}`);
+
+    try {
+      if (hasCanvasCaptureStream && this.canvas.captureStream) {
+        // Standard path - works on Desktop, Android, modern browsers
+        this.canvasStream = this.canvas.captureStream(fps);
+        console.log('✅ Using canvas.captureStream()');
+      } else if (isIOS) {
+        // iOS fallback path
+        console.log('⚠️ iOS detected: Using fallback video stream method');
+        this.canvasStream = await this.createIOSVideoStream(fps);
+      } else {
+        throw new Error('Canvas stream capture not supported');
+      }
+
+      if (!this.canvasStream) {
+        throw new Error('Failed to capture canvas stream');
+      }
+
+      // Create MediaRecorder with best supported MIME type
+      const mimeType = this.getSupportedMimeType();
+      this.mediaRecorder = new MediaRecorder(this.canvasStream, {
+        mimeType,
+        videoBitsPerSecond: 2500000, // 2.5 Mbps
+      });
+
+      this.setupEventHandlers(mimeType);
+
+      this.chunks = [];
+      this.mediaRecorder.start(1000); // Collect data every second
+      console.log('🎥 Recording started');
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      throw error;
     }
-
-    // Create MediaRecorder with canvas stream
-    const mimeType = this.getSupportedMimeType();
-    this.mediaRecorder = new MediaRecorder(this.canvasStream, {
-      mimeType,
-      videoBitsPerSecond: 2500000, // 2.5 Mbps
-    });
-
-    this.setupEventHandlers(mimeType);
-
-    this.chunks = [];
-    this.mediaRecorder.start(1000); // Collect data every second
   }
 
   /**

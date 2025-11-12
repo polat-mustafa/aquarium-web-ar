@@ -525,7 +525,16 @@ function ARExperienceContent() {
   }, [isRecording, bubbles, showSpeechBubble, currentFact, language, enableSpeechBubbles]);
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 relative">
+    <div
+      className="w-full min-h-screen bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 relative"
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{
+        touchAction: 'none',  // Disable browser pinch-zoom, handle ourselves
+        overscrollBehavior: 'none',  // Prevent rubber-band scroll on iOS
+        WebkitUserSelect: 'none',  // Disable text selection on iOS
+      } as React.CSSProperties}
+    >
       {/* Camera Video Background */}
       <video
         ref={videoRef}

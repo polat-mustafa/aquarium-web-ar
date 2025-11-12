@@ -53,25 +53,56 @@ export class MediaPipeDepthSensor {
 
       const { Hands } = await import('@mediapipe/hands');
 
-      this.hands = new Hands({
-        locateFile: (file: string) => {
-          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+      // Multi-CDN support with fallback for iOS and unreliable networks
+      const cdnUrls = [
+        'https://cdn.jsdelivr.net/npm/@mediapipe/hands/',  // Primary CDN
+        'https://unpkg.com/@mediapipe/hands/',              // Fallback 1
+        'https://esm.sh/@mediapipe/hands/',                 // Fallback 2
+      ];
+
+      let handsInstance: any = null;
+      let initError: Error | null = null;
+
+      for (const cdnUrl of cdnUrls) {
+        try {
+          console.log(`🔗 Trying MediaPipe CDN: ${cdnUrl}`);
+
+          handsInstance = new Hands({
+            locateFile: (file: string) => `${cdnUrl}${file}`
+          });
+
+          handsInstance.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
+          });
+
+          handsInstance.onResults((results: any) => {
+            this.processHandResults(results);
+          });
+
+          // Initialize with timeout (5 seconds)
+          const initPromise = handsInstance.initialize();
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('MediaPipe initialization timeout')), 5000)
+          );
+
+          await Promise.race([initPromise, timeoutPromise]);
+          this.hands = handsInstance;
+          console.log(`✅ MediaPipe loaded from: ${cdnUrl}`);
+          initError = null;
+          break;
+        } catch (error) {
+          console.warn(`⚠️ Failed with ${cdnUrl}:`, error);
+          initError = error as Error;
+          continue;
         }
-      });
+      }
 
-      this.hands.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.6,
-        minTrackingConfidence: 0.6
-      });
-
-      this.hands.onResults((results: any) => {
-        this.processHandResults(results);
-      });
-
-      // Initialize hands model
-      await this.hands.initialize();
+      if (!this.hands || initError) {
+        throw new Error(`Failed to initialize MediaPipe from all CDN sources. Last error: ${initError?.message}`);
+      }
 
       // Use existing video stream instead of creating new Camera
       // Process frames manually using requestAnimationFrame

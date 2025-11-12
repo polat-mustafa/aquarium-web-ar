@@ -99,16 +99,18 @@ export const RecordButton: React.FC<RecordButtonProps> = ({
     }
   }, [recordingTime, maxDuration, isRecording]);
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!isInitialized || disabled) return;
 
     try {
-      videoService.recording.start();
+      await videoService.recording.start();
       setIsRecording(true);
       onRecordingStart?.();
       console.log('🎬 Recording started');
     } catch (error) {
       console.error('Failed to start recording:', error);
+      // Show user-friendly error message
+      alert('Unable to start recording. Please ensure camera access is enabled.');
     }
   };
 
