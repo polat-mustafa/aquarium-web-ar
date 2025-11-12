@@ -20,6 +20,8 @@ import { DepthSensingManager, type ObstacleZone, type DepthSensingMode } from '@
 import ScanningAnimation from '@/components/ar/ScanningAnimation';
 import { EnvironmentScanAnimation } from '@/components/ar/EnvironmentScanAnimation';
 import { getUserFriendlyError, checkAllCapabilities, type DeviceCapabilities } from '@/utils/featureDetection';
+import { Professional3DScanInterface } from '@/components/ar/Professional3DScanInterface';
+import { ScreenshotCaptureEffect } from '@/components/ar/ScreenshotCaptureEffect';
 
 function TestNewSceneContent() {
   // CRITICAL FIX: Extract creature ID once with useMemo to prevent infinite re-renders
@@ -67,6 +69,8 @@ function TestNewSceneContent() {
   // ENVIRONMENT SCAN STATES
   const [showEnvironmentScan, setShowEnvironmentScan] = useState(false);
   const [environmentScanComplete, setEnvironmentScanComplete] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
 
   // Privacy Modal State
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -147,6 +151,23 @@ function TestNewSceneContent() {
       setShowPrivacyModal(true);
     }
   }, []);
+
+  // Animate scan progress
+  useEffect(() => {
+    if (!showEnvironmentScan || environmentScanComplete) return;
+
+    const interval = setInterval(() => {
+      setScanProgress((prev) => {
+        if (prev >= 100) {
+          setEnvironmentScanComplete(true);
+          return 100;
+        }
+        return prev + 2;
+      });
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [showEnvironmentScan, environmentScanComplete]);
 
   const handlePrivacyAccept = useCallback(() => {
     localStorage.setItem('aquarium-privacy-accepted', 'true');
@@ -631,13 +652,26 @@ function TestNewSceneContent() {
         {...({ 'webkit-playsinline': 'true' } as any)}
       />
 
-      {/* Environment Scan Animation on Startup */}
-      <EnvironmentScanAnimation
-        isActive={showEnvironmentScan && !environmentScanComplete}
-        duration={4000}
+      {/* Professional 3D Scanning Interface */}
+      {showEnvironmentScan && !environmentScanComplete && (
+        <Professional3DScanInterface
+          isScanning={true}
+          progress={scanProgress}
+          creatureName={activeCreature?.name || 'Aquatic Species'}
+          onComplete={() => setEnvironmentScanComplete(true)}
+          showGrid={true}
+        />
+      )}
+
+      {/* Screenshot Capture Effect */}
+      <ScreenshotCaptureEffect
+        isActive={isCapturingPhoto}
+        duration={800}
         onComplete={() => {
-          setEnvironmentScanComplete(true);
-          setShowEnvironmentScan(false);
+          setIsCapturingPhoto(false);
+          setTimeout(() => {
+            router.push('/ar/photo-preview');
+          }, 100);
         }}
       />
 
@@ -1020,7 +1054,8 @@ function TestNewSceneContent() {
             onClick={(e) => {
               e.stopPropagation();
               if (!isCapturingPhoto && activeCreature) {
-                handlePhotoCapture();
+                setIsCapturingPhoto(true);
+                capturePhoto();
               }
             }}
             onTouchStart={(e) => e.stopPropagation()}
