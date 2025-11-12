@@ -7,14 +7,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Allow ngrok and other dev origins to prevent HMR issues
-  experimental: {
-    allowedDevOrigins: [
-      '.ngrok-free.app',
-      '.ngrok.io',
-      'localhost:3000',
-    ],
-  },
   // Webpack configuration to reduce HMR aggressive reloading
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {

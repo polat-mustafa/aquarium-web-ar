@@ -100,7 +100,6 @@ function TestNewSceneContent() {
     capturePhoto,
     showLensAnimation,
     setShowLensAnimation,
-    isCapturingPhoto,
   } = useAppStore();
 
   // Custom photo capture handler that uses Next.js router
