@@ -456,100 +456,110 @@ function TestNewSceneContent() {
       console.error('❌ TensorFlow failed:', error);
     }
 
-    // Try WebXR (always attempt on all devices)
+    // Try WebXR (Professional implementation following WebXR Cookbook)
     try {
-        console.log('📡 Starting WebXR...');
+        console.log('📡 Starting WebXR AR session...');
         setWebxrStatus('Initializing...');
 
-        // Request WebXR session
         const xr = (navigator as any).xr;
-        if (xr && xr.requestSession) {
+        if (!xr) {
+          throw new Error('navigator.xr not available');
+        }
+
+        // Check if immersive-ar is supported
+        const isARSupported = await xr.isSessionSupported('immersive-ar');
+        console.log(`AR supported: ${isARSupported}`);
+
+        if (!isARSupported) {
+          throw new Error('immersive-ar not supported on this device');
+        }
+
+        // Request AR session with minimal required features
+        const session = await xr.requestSession('immersive-ar', {
+          requiredFeatures: [],
+          optionalFeatures: ['hit-test', 'dom-overlay', 'local', 'local-floor']
+        });
+
+        console.log('✅ WebXR AR session created!');
+        setWebxrStatus('Active');
+        successfulModes.add('webxr');
+
+        // Request reference space for AR (use 'local' not 'local-floor')
+        const xrRefSpace = await session.requestReferenceSpace('local');
+        console.log('✅ Reference space created: local');
+
+        // Create hit test source using viewer space
+        const viewerSpace = await session.requestReferenceSpace('viewer');
+        let hitTestSource: any = null;
+
+        try {
+          hitTestSource = await session.requestHitTestSource({
+            space: viewerSpace
+          });
+          console.log('✅ Hit test source created');
+        } catch (e) {
+          console.warn('⚠️ Hit test not available:', e);
+        }
+
+        // XR Animation loop
+        const onXRFrame = (time: number, frame: any) => {
+          if (!session) return;
+
           try {
-            const session = await xr.requestSession('immersive-ar', {
-              requiredFeatures: [],
-              optionalFeatures: ['hit-test', 'dom-overlay', 'anchors', 'plane-detection']
-            });
+            // Get viewer pose
+            const pose = frame.getViewerPose(xrRefSpace);
 
-            console.log('✅ WebXR session created!');
-            setWebxrStatus('Active');
-            successfulModes.add('webxr');
-            // Detection count will be updated in frame loop when surfaces are detected
+            if (pose && hitTestSource) {
+              const hitTestResults = frame.getHitTestResults(hitTestSource);
 
-            // Set up hit test source for surface detection
-            const referenceSpace = await session.requestReferenceSpace('viewer');
-            let hitTestSource: any = null;
+              if (hitTestResults.length > 0) {
+                setDetectedSurfaces(hitTestResults.length);
+                setWebxrStatus('Detecting');
+                setDetectionCounts(prev => ({ ...prev, webxr: 1 }));
 
-            try {
-              hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
-              console.log('✅ Hit test source created');
-            } catch (e) {
-              console.warn('⚠️ Hit test not available');
-            }
+                // Extract surface poses
+                const poses: Array<{ position: [number, number, number]; size: [number, number] }> = [];
 
-            // Animation loop to detect surfaces
-            const onXRFrame = (time: number, frame: any) => {
-              if (!session) return;
-
-              try {
-                if (hitTestSource) {
-                  const hitTestResults = frame.getHitTestResults(hitTestSource);
-
-                  if (hitTestResults.length > 0) {
-                    setDetectedSurfaces(hitTestResults.length);
-                    setWebxrStatus(`${hitTestResults.length} surfaces`);
-
-                    // Update WebXR detection count
-                    setDetectionCounts(prev => ({ ...prev, webxr: 1 }));
-
-                    // Extract surface poses for visualization
-                    const poses: Array<{ position: [number, number, number]; size: [number, number] }> = [];
-
-                    hitTestResults.forEach((hitTestResult: any) => {
-                      const pose = hitTestResult.getPose(referenceSpace);
-                      if (pose) {
-                        const transform = pose.transform;
-                        poses.push({
-                          position: [
-                            transform.position.x,
-                            transform.position.y,
-                            transform.position.z
-                          ],
-                          size: [0.5, 0.5] // Default size, can be adjusted
-                        });
-                      }
+                for (const hitTestResult of hitTestResults) {
+                  const hitPose = hitTestResult.getPose(xrRefSpace);
+                  if (hitPose) {
+                    const pos = hitPose.transform.position;
+                    poses.push({
+                      position: [pos.x, pos.y, pos.z],
+                      size: [0.5, 0.5]
                     });
-
-                    setSurfacePoses(poses);
-                  } else {
-                    setDetectedSurfaces(0);
-                    setSurfacePoses([]);
-                    setDetectionCounts(prev => ({ ...prev, webxr: 0 }));
                   }
                 }
-              } catch (err) {
-                console.warn('⚠️ Frame processing error:', err);
+
+                setSurfacePoses(poses);
+              } else {
+                setDetectedSurfaces(0);
+                setSurfacePoses([]);
+                setDetectionCounts(prev => ({ ...prev, webxr: 0 }));
               }
-
-              session.requestAnimationFrame(onXRFrame);
-            };
-
-            session.requestAnimationFrame(onXRFrame);
-
-            // Handle session end
-            session.addEventListener('end', () => {
-              console.log('WebXR session ended');
-              setWebxrStatus('Ended');
-              setDetectedSurfaces(0);
-            });
-
-          } catch (sessionError: any) {
-            console.error('❌ WebXR session failed:', sessionError);
-            setWebxrStatus(`Error: ${sessionError.message}`);
+            }
+          } catch (err) {
+            console.warn('⚠️ XR frame error:', err);
           }
-        }
+
+          session.requestAnimationFrame(onXRFrame);
+        };
+
+        // Start animation loop
+        session.requestAnimationFrame(onXRFrame);
+
+        // Handle session end
+        session.addEventListener('end', () => {
+          console.log('📴 WebXR session ended');
+          setWebxrStatus('Ended');
+          setDetectedSurfaces(0);
+          setSurfacePoses([]);
+          setDetectionCounts(prev => ({ ...prev, webxr: 0 }));
+        });
+
       } catch (error: any) {
-        console.error('❌ WebXR failed:', error);
-        setWebxrStatus('Failed');
+        console.error('❌ WebXR initialization failed:', error);
+        setWebxrStatus(`Failed: ${error.message}`);
       }
 
     if (successfulModes.size > 0) {
