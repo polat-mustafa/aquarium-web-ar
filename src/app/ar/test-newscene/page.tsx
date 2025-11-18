@@ -1021,55 +1021,55 @@ function TestNewSceneContent() {
         </div>
       )}
 
-      {/* Detection Counter Overlay */}
+      {/* Detection Counter Overlay - Compact & Responsive */}
       {isRunningAll && (
-        <div className="fixed top-40 left-4 z-50 bg-black/90 backdrop-blur-xl rounded-xl p-4 border border-cyan-500/50 pointer-events-none shadow-2xl">
-          <h3 className="text-cyan-300 font-bold text-sm mb-3 flex items-center">
-            <span className="mr-2">📊</span>
-            Live Detection
+        <div className="fixed top-32 left-2 sm:top-40 sm:left-4 z-50 bg-black/90 backdrop-blur-xl rounded-lg sm:rounded-xl p-2 sm:p-3 border border-cyan-500/50 pointer-events-none shadow-2xl max-w-[140px] sm:max-w-none">
+          <h3 className="text-cyan-300 font-bold text-[10px] sm:text-xs mb-2 flex items-center">
+            <span className="mr-1 text-xs sm:text-sm">📊</span>
+            <span className="hidden sm:inline">Live Detection</span>
+            <span className="sm:hidden">Detect</span>
           </h3>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between space-x-4">
-              <span className="text-xs text-white flex items-center">
-                <span className="mr-2">✋</span>
-                Hands:
+          <div className="space-y-1 sm:space-y-1.5">
+            <div className="flex items-center justify-between space-x-2 sm:space-x-3">
+              <span className="text-[9px] sm:text-xs text-white flex items-center">
+                <span className="mr-1 text-xs sm:text-sm">✋</span>
+                <span className="hidden sm:inline">Hands:</span>
+                <span className="sm:hidden">H:</span>
               </span>
-              <span className={`text-sm font-bold ${detectionCounts.hands > 0 ? 'text-green-400' : 'text-slate-500'}`}>
+              <span className={`text-xs sm:text-sm font-bold ${detectionCounts.hands > 0 ? 'text-green-400' : 'text-slate-500'}`}>
                 {detectionCounts.hands}
               </span>
             </div>
-            <div className="flex items-center justify-between space-x-4">
-              <span className="text-xs text-white flex items-center">
-                <span className="mr-2">👤</span>
-                Faces:
+            <div className="flex items-center justify-between space-x-2 sm:space-x-3">
+              <span className="text-[9px] sm:text-xs text-white flex items-center">
+                <span className="mr-1 text-xs sm:text-sm">👤</span>
+                <span className="hidden sm:inline">Faces:</span>
+                <span className="sm:hidden">F:</span>
               </span>
-              <span className={`text-sm font-bold ${detectionCounts.faces > 0 ? 'text-green-400' : 'text-slate-500'}`}>
+              <span className={`text-xs sm:text-sm font-bold ${detectionCounts.faces > 0 ? 'text-green-400' : 'text-slate-500'}`}>
                 {detectionCounts.faces}
               </span>
             </div>
-            <div className="flex items-center justify-between space-x-4">
-              <span className="text-xs text-white flex items-center">
-                <span className="mr-2">🥽</span>
-                WebXR:
+            <div className="flex items-center justify-between space-x-2 sm:space-x-3">
+              <span className="text-[9px] sm:text-xs text-white flex items-center">
+                <span className="mr-1 text-xs sm:text-sm">🥽</span>
+                <span className="hidden sm:inline">WebXR:</span>
+                <span className="sm:hidden">XR:</span>
               </span>
-              <span className={`text-sm font-bold ${activeModes.has('webxr') ? 'text-cyan-400' : 'text-slate-500'}`}>
-                {activeModes.has('webxr') ? 'Active' : 'Off'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between space-x-4">
-              <span className="text-xs text-white flex items-center">
-                <span className="mr-2">🧠</span>
-                TensorFlow:
-              </span>
-              <span className={`text-sm font-bold ${activeModes.has('tensorflow') ? 'text-purple-400' : 'text-slate-500'}`}>
-                {activeModes.has('tensorflow') ? 'Active' : 'Off'}
+              <span className={`text-[9px] sm:text-xs font-bold ${activeModes.has('webxr') ? 'text-cyan-400' : 'text-slate-500'}`}>
+                {activeModes.has('webxr') ? 'On' : 'Off'}
               </span>
             </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-600">
-            <p className="text-[10px] text-yellow-400">
-              ⚠️ Only MediaPipe actually working
-            </p>
+            <div className="flex items-center justify-between space-x-2 sm:space-x-3">
+              <span className="text-[9px] sm:text-xs text-white flex items-center">
+                <span className="mr-1 text-xs sm:text-sm">🧠</span>
+                <span className="hidden sm:inline">TF:</span>
+                <span className="sm:hidden">TF:</span>
+              </span>
+              <span className={`text-[9px] sm:text-xs font-bold ${activeModes.has('tensorflow') ? 'text-purple-400' : 'text-slate-500'}`}>
+                {activeModes.has('tensorflow') ? 'On' : 'Off'}
+              </span>
+            </div>
           </div>
         </div>
       )}

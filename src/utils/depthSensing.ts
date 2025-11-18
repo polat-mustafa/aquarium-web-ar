@@ -73,9 +73,9 @@ export class MediaPipeDepthSensor {
 
           handsInstance.setOptions({
             maxNumHands: 2,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.6,
-            minTrackingConfidence: 0.6
+            modelComplexity: 0, // Faster tracking (0 = lite model)
+            minDetectionConfidence: 0.5, // Lower for faster detection
+            minTrackingConfidence: 0.5 // Lower for smoother tracking
           });
 
           handsInstance.onResults((results: any) => {

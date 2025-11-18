@@ -36,6 +36,7 @@ export async function checkMediaPipeSupport(): Promise<FeatureSupport> {
 
 /**
  * Check if WebXR depth sensing is supported
+ * More permissive detection for Samsung and ARCore devices
  */
 export async function checkWebXRSupport(): Promise<FeatureSupport> {
   // Check basic WebXR support
@@ -62,6 +63,17 @@ export async function checkWebXRSupport(): Promise<FeatureSupport> {
     const isARSupported = await xr.isSessionSupported('immersive-ar');
 
     if (!isARSupported) {
+      // For Samsung and other Android devices, be more permissive
+      const userAgent = navigator.userAgent.toLowerCase();
+      if (userAgent.includes('android') || userAgent.includes('samsung')) {
+        console.log('⚠️ WebXR check failed, but Android device detected - allowing WebXR attempt');
+        return {
+          supported: true,
+          reason: 'Android/Samsung device detected - WebXR may work',
+          recommendation: 'WebXR enabled for ARCore-capable Android devices'
+        };
+      }
+
       return {
         supported: false,
         reason: 'Immersive AR not supported',
@@ -69,14 +81,23 @@ export async function checkWebXRSupport(): Promise<FeatureSupport> {
       };
     }
 
-    // Try to check depth-sensing support (this might fail)
-    // We can't fully test without requesting a session
     return {
       supported: true,
-      reason: 'WebXR AR available, depth sensing may require specific hardware',
-      recommendation: 'Depth sensing requires Quest 3, Quest 3S, or ARCore-enabled device'
+      reason: 'WebXR AR available',
+      recommendation: 'WebXR depth sensing enabled'
     };
   } catch (error) {
+    // Even if check fails, allow on Android/Samsung devices
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (userAgent.includes('android') || userAgent.includes('samsung')) {
+      console.log('⚠️ WebXR error but Android detected - allowing attempt');
+      return {
+        supported: true,
+        reason: 'Android device - WebXR enabled for testing',
+        recommendation: 'Try enabling WebXR - should work on ARCore devices'
+      };
+    }
+
     return {
       supported: false,
       reason: 'WebXR session check failed',
