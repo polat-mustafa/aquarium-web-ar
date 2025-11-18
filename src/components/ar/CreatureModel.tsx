@@ -241,8 +241,8 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
 
   // TEST: Hide Behind Object trigger
   useEffect(() => {
-    if (triggerHideBehind > 0 && detectedObjects.length > 0) {
-      console.log('🧪 TEST: Hide Behind triggered!');
+    if (triggerHideBehind > 0) {
+      console.log('🧪 TEST: Hide Behind triggered! Objects:', detectedObjects.length);
       pendingHideRef.current = triggerHideBehind;
       setIsAvoidingObstacle(false);
     }
@@ -250,8 +250,8 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
 
   // TEST: Explore Behind trigger
   useEffect(() => {
-    if (triggerExplore > 0 && detectedObjects.length > 0) {
-      console.log('🧪 TEST: Explore Behind triggered!');
+    if (triggerExplore > 0) {
+      console.log('🧪 TEST: Explore Behind triggered! Objects:', detectedObjects.length);
       pendingExploreRef.current = triggerExplore;
       setIsAvoidingObstacle(false);
     }
@@ -347,8 +347,74 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
 
   // HIDE BEHIND OBJECT: Find nearest object and hide behind it
   const hideBehindObject = useCallback((currentPos: [number, number, number], camera: THREE.Camera, reason: 'threat' | 'explore') => {
-    if (detectedObjects.length === 0) return;
     if (isHiding && reason === 'threat') return; // Already hiding from threat
+
+    // If no objects, create a virtual object for animation
+    if (detectedObjects.length === 0) {
+      console.log('⚠️ No objects detected - creating virtual object for animation');
+      const virtualObject = {
+        id: 'virtual-object',
+        position: [0, -1, -2] as [number, number, number],
+        dimensions: { width: 2, height: 0.8, depth: 1 },
+        volume: 1.6,
+        type: 'table' as const
+      };
+      // Use virtual object for animation
+      const objDepth = 2; // Fixed depth for virtual object
+      const hideOffset = reason === 'threat' ? 2.5 : 1.5;
+      const behindX = (Math.random() - 0.5) * 2;
+      const behindY = -0.5;
+      const behindZ = Math.min(-objDepth - hideOffset, -2.0);
+
+      const newX = Math.max(-5, Math.min(5, behindX));
+      const newY = Math.max(-3, Math.min(3, behindY));
+      const newZ = Math.max(-10, Math.min(-2, behindZ));
+
+      // Start hiding animation
+      positionAnimationRef.current = {
+        progress: 0,
+        from: currentPos,
+        to: [newX, newY, newZ]
+      };
+
+      setIsHiding(true);
+      setHidingBehindObject('virtual-object');
+
+      // Start fade out
+      opacityAnimationRef.current = {
+        progress: 0,
+        from: modelOpacity,
+        to: 0.15
+      };
+
+      setShowSpeechBubble(true);
+      setTimeout(() => setShowSpeechBubble(false), speechBubbleDuration);
+
+      const hideDuration = reason === 'threat' ? 4000 : 3000;
+      setTimeout(() => {
+        opacityAnimationRef.current = {
+          progress: 0,
+          from: modelOpacity,
+          to: 1.0
+        };
+        setIsHiding(false);
+        setHidingBehindObject(null);
+
+        if (reason === 'threat') {
+          const returnPos: [number, number, number] = [
+            (Math.random() - 0.5) * 3,
+            (Math.random() - 0.5) * 2,
+            -3
+          ];
+          positionAnimationRef.current = {
+            progress: 0,
+            from: [newX, newY, newZ],
+            to: returnPos
+          };
+        }
+      }, hideDuration);
+      return;
+    }
 
     const currentPosVec = new THREE.Vector3(currentPos[0], currentPos[1], currentPos[2]);
     const currentDepth = Math.abs(currentPos[2]);

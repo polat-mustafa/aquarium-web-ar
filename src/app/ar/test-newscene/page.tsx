@@ -82,13 +82,31 @@ function TestNewSceneContent() {
     dimensions: { width: number; height: number; depth: number };
     volume: number;
   }>>([]);
+  // MOCK OBJECTS: Always available for testing buttons
   const [detectedObjects, setDetectedObjects] = useState<Array<{
     id: string;
     position: [number, number, number];
     dimensions: { width: number; height: number; depth: number };
     volume: number;
     type: 'table' | 'floor' | 'wall' | 'object';
-  }>>([]);
+  }>>([
+    // Mock table object for testing
+    {
+      id: 'mock-table-1',
+      position: [0, -1, -2],
+      dimensions: { width: 2, height: 0.8, depth: 1 },
+      volume: 1.6,
+      type: 'table'
+    },
+    // Mock wall object for testing
+    {
+      id: 'mock-wall-1',
+      position: [-2, 0, -3],
+      dimensions: { width: 0.1, height: 3, depth: 2 },
+      volume: 0.6,
+      type: 'wall'
+    }
+  ]);
 
   // POKEMON GO STYLE: Placed organisms tracking
   const [placedOrganisms, setPlacedOrganisms] = useState<Array<{
@@ -1801,12 +1819,15 @@ function TestNewSceneContent() {
         )}
 
         {/* Animation Test Panel */}
-        {showAnimationTests && activeCreature && detectedObjects.length > 0 && (
+        {showAnimationTests && activeCreature && (
           <div className="fixed bottom-24 left-4 z-50 bg-black/95 backdrop-blur-xl rounded-2xl p-4 border border-purple-500/50 max-w-xs pointer-events-auto shadow-2xl">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-purple-300 font-bold text-sm flex items-center">
                 <span className="mr-2">🧪</span>
                 Animation Tests
+                <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
+                  {detectedObjects.length} obj
+                </span>
               </h3>
               <button
                 onClick={(e) => {
@@ -1819,6 +1840,13 @@ function TestNewSceneContent() {
               >
                 ✕
               </button>
+            </div>
+
+            {/* Info text */}
+            <div className="mb-3 p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <p className="text-xs text-blue-300">
+                ✅ Buttons work with {detectedObjects.length === 0 ? 'virtual' : 'detected'} objects. Watch fish fade & move!
+              </p>
             </div>
 
             <div className="space-y-2">
