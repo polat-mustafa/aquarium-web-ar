@@ -16,6 +16,7 @@ interface CreatureModelProps {
   obstacleZones?: ObstacleZone[];
   enableCollisionDetection?: boolean;
   triggerFeedReturn?: number;
+  surfacePosition?: [number, number, number];
 }
 
 // Simple icon fallback for creatures without 3D models
@@ -67,6 +68,7 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
   obstacleZones = [],
   enableCollisionDetection = false,
   triggerFeedReturn = 0,
+  surfacePosition,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
@@ -177,6 +179,24 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
       }
     };
   }, [hasModelPath, creature.modelPath, creature.name]);
+
+  // WEBXR SURFACE: Position model on detected surface
+  useEffect(() => {
+    if (surfacePosition) {
+      console.log('🎯 Positioning model on surface:', surfacePosition);
+      // Animate to surface position (slightly above the surface)
+      const surfacePos: [number, number, number] = [
+        surfacePosition[0],
+        surfacePosition[1] + 0.5, // Slightly above surface
+        surfacePosition[2]
+      ];
+      positionAnimationRef.current = {
+        progress: 0,
+        from: dynamicPosition,
+        to: surfacePos
+      };
+    }
+  }, [surfacePosition, dynamicPosition]);
 
   // FEEDING: Watch for feeding trigger and return fish to center
   useEffect(() => {

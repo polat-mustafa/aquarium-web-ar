@@ -233,22 +233,31 @@ export class WebXRDepthSensor {
 
       this.onDepthFrameCallback = onDepthFrame;
 
-      // Try to request session with depth sensing
+      // Try to request session with depth sensing (make it optional for Samsung/Android)
       try {
+        console.log('🚀 Requesting WebXR session with depth sensing...');
         this.session = await xr.requestSession('immersive-ar', {
-          requiredFeatures: ['depth-sensing'],
-          optionalFeatures: ['hit-test', 'dom-overlay'],
+          requiredFeatures: [],
+          optionalFeatures: ['hit-test', 'depth-sensing', 'dom-overlay', 'anchors', 'plane-detection'],
           depthSensing: {
             usagePreference: ['cpu-optimized', 'gpu-optimized'],
             dataFormatPreference: ['luminance-alpha', 'float32']
           }
         });
+        console.log('✅ WebXR session created with depth sensing!');
       } catch (sessionError: any) {
-        // More specific error for depth sensing
-        if (sessionError.message.includes('configuration')) {
-          throw new Error('Depth sensing not available. Requires Quest 3, Quest 3S, or ARCore-enabled Android device.');
+        // Try again without depth sensing for Samsung/Android devices
+        console.warn('⚠️ Depth sensing failed, trying basic AR...');
+        try {
+          this.session = await xr.requestSession('immersive-ar', {
+            requiredFeatures: [],
+            optionalFeatures: ['hit-test', 'dom-overlay', 'anchors', 'plane-detection']
+          });
+          console.log('✅ WebXR session created (basic AR mode, no depth sensing)');
+          // Don't throw - fallback session is valid!
+        } catch (fallbackError: any) {
+          throw new Error('WebXR AR session failed. Make sure you allow camera permissions and AR access.');
         }
-        throw new Error(`WebXR session failed: ${sessionError.message}`);
       }
 
       this.session.addEventListener('end', () => {

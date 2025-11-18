@@ -71,6 +71,11 @@ function TestNewSceneContent() {
     pose: 0
   });
 
+  // WebXR surface detection
+  const [detectedSurfaces, setDetectedSurfaces] = useState<number>(0);
+  const [webxrStatus, setWebxrStatus] = useState<string>('Off');
+  const [surfacePoses, setSurfacePoses] = useState<Array<{ position: [number, number, number]; size: [number, number] }>>([]);
+
   // FEEDING STATES
   const [isFeedingAnimation, setIsFeedingAnimation] = useState(false);
   const [feedPosition, setFeedPosition] = useState<[number, number] | null>(null);
@@ -447,11 +452,93 @@ function TestNewSceneContent() {
     if (deviceCapabilities?.webxr.supported !== false) {
       try {
         console.log('📡 Starting WebXR...');
-        successfulModes.add('webxr');
-        setDetectionCounts(prev => ({ ...prev, webxr: 1 }));
-        console.log('✅ WebXR marked active');
+        setWebxrStatus('Initializing...');
+
+        // Request WebXR session
+        const xr = (navigator as any).xr;
+        if (xr && xr.requestSession) {
+          try {
+            const session = await xr.requestSession('immersive-ar', {
+              requiredFeatures: [],
+              optionalFeatures: ['hit-test', 'dom-overlay', 'anchors', 'plane-detection']
+            });
+
+            console.log('✅ WebXR session created!');
+            setWebxrStatus('Active');
+            successfulModes.add('webxr');
+            setDetectionCounts(prev => ({ ...prev, webxr: 1 }));
+
+            // Set up hit test source for surface detection
+            const referenceSpace = await session.requestReferenceSpace('viewer');
+            let hitTestSource: any = null;
+
+            try {
+              hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
+              console.log('✅ Hit test source created');
+            } catch (e) {
+              console.warn('⚠️ Hit test not available');
+            }
+
+            // Animation loop to detect surfaces
+            const onXRFrame = (time: number, frame: any) => {
+              if (!session) return;
+
+              try {
+                if (hitTestSource) {
+                  const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+                  if (hitTestResults.length > 0) {
+                    setDetectedSurfaces(hitTestResults.length);
+                    setWebxrStatus(`${hitTestResults.length} surfaces`);
+
+                    // Extract surface poses for visualization
+                    const poses: Array<{ position: [number, number, number]; size: [number, number] }> = [];
+
+                    hitTestResults.forEach((hitTestResult: any) => {
+                      const pose = hitTestResult.getPose(referenceSpace);
+                      if (pose) {
+                        const transform = pose.transform;
+                        poses.push({
+                          position: [
+                            transform.position.x,
+                            transform.position.y,
+                            transform.position.z
+                          ],
+                          size: [0.5, 0.5] // Default size, can be adjusted
+                        });
+                      }
+                    });
+
+                    setSurfacePoses(poses);
+                  } else {
+                    setDetectedSurfaces(0);
+                    setSurfacePoses([]);
+                  }
+                }
+              } catch (err) {
+                console.warn('⚠️ Frame processing error:', err);
+              }
+
+              session.requestAnimationFrame(onXRFrame);
+            };
+
+            session.requestAnimationFrame(onXRFrame);
+
+            // Handle session end
+            session.addEventListener('end', () => {
+              console.log('WebXR session ended');
+              setWebxrStatus('Ended');
+              setDetectedSurfaces(0);
+            });
+
+          } catch (sessionError: any) {
+            console.error('❌ WebXR session failed:', sessionError);
+            setWebxrStatus(`Error: ${sessionError.message}`);
+          }
+        }
       } catch (error: any) {
         console.error('❌ WebXR failed:', error);
+        setWebxrStatus('Failed');
       }
     }
 
@@ -1056,10 +1143,22 @@ function TestNewSceneContent() {
                 <span className="hidden sm:inline">WebXR:</span>
                 <span className="sm:hidden">XR:</span>
               </span>
-              <span className={`text-[9px] sm:text-xs font-bold ${activeModes.has('webxr') ? 'text-cyan-400' : 'text-slate-500'}`}>
-                {activeModes.has('webxr') ? 'On' : 'Off'}
+              <span className={`text-[9px] sm:text-xs font-bold ${activeModes.has('webxr') && webxrStatus === 'Active' ? 'text-cyan-400' : webxrStatus.includes('Error') ? 'text-red-400' : 'text-slate-500'}`}>
+                {webxrStatus}
               </span>
             </div>
+            {detectedSurfaces > 0 && (
+              <div className="flex items-center justify-between space-x-2 sm:space-x-3 bg-cyan-500/20 rounded px-2 py-1">
+                <span className="text-[9px] sm:text-xs text-cyan-300 flex items-center">
+                  <span className="mr-1 text-xs sm:text-sm">📍</span>
+                  <span className="hidden sm:inline">Surfaces:</span>
+                  <span className="sm:hidden">Surf:</span>
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-cyan-400">
+                  {detectedSurfaces}
+                </span>
+              </div>
+            )}
             <div className="flex items-center justify-between space-x-2 sm:space-x-3">
               <span className="text-[9px] sm:text-xs text-white flex items-center">
                 <span className="mr-1 text-xs sm:text-sm">🧠</span>
@@ -1081,6 +1180,45 @@ function TestNewSceneContent() {
           mode={depthSensingMode}
           obstacleCount={obstacleZones.length}
         />
+      )}
+
+      {/* Surface Visualization - WebXR Detected Surfaces */}
+      {surfacePoses.length > 0 && (
+        <div className="fixed inset-0 z-25 pointer-events-none">
+          {surfacePoses.map((surface, index) => (
+            <div
+              key={`surface-${index}`}
+              className="absolute"
+              style={{
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '200px',
+                height: '200px',
+                border: '3px dashed #00ffff',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(0, 255, 255, 0.1)',
+                boxShadow: '0 0 30px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.2)',
+                animation: 'surfacePulse 2s ease-in-out infinite'
+              }}
+            >
+              <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-cyan-500/90 text-white px-3 py-1 rounded-lg text-xs font-bold backdrop-blur-sm border border-cyan-300">
+                <div className="flex items-center space-x-2">
+                  <span>📍</span>
+                  <span>Surface {index + 1}</span>
+                </div>
+                <div className="text-[10px] text-cyan-100 mt-0.5">
+                  Position: ({surface.position[0].toFixed(2)}, {surface.position[1].toFixed(2)}, {surface.position[2].toFixed(2)})
+                </div>
+              </div>
+              {/* Corner markers */}
+              <div className="absolute -top-1 -left-1 w-4 h-4 bg-cyan-400 rounded-full border-2 border-white animate-ping"></div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full border-2 border-white animate-ping" style={{ animationDelay: '0.5s' }}></div>
+              <div className="absolute -bottom-1 -left-1 w-4 h-4 bg-cyan-400 rounded-full border-2 border-white animate-ping" style={{ animationDelay: '1s' }}></div>
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full border-2 border-white animate-ping" style={{ animationDelay: '1.5s' }}></div>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Obstacle Zone Visualization */}
@@ -1164,6 +1302,7 @@ function TestNewSceneContent() {
           obstacleZones={obstacleZones}
           enableCollisionDetection={depthSensingMode !== 'none'}
           triggerFeedReturn={triggerFeedReturn}
+          surfacePosition={surfacePoses.length > 0 ? surfacePoses[0].position : undefined}
         />
 
         {/* Bubble effects */}
@@ -1463,6 +1602,17 @@ function TestNewSceneContent() {
           100% {
             transform: translateY(200px) scale(0);
             opacity: 0;
+          }
+        }
+
+        @keyframes surfacePulse {
+          0%, 100% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: translate(-50%, -50%) scale(1.05);
           }
         }
       `}</style>

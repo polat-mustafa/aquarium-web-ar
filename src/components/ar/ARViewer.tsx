@@ -23,6 +23,7 @@ interface ARViewerProps {
   obstacleZones?: ObstacleZone[];
   enableCollisionDetection?: boolean;
   triggerFeedReturn?: number;
+  surfacePosition?: [number, number, number];
 }
 
 // Static camera settings (never change)
@@ -53,7 +54,8 @@ const ARViewer: React.FC<ARViewerProps> = memo(({
   className = '',
   obstacleZones = [],
   enableCollisionDetection = false,
-  triggerFeedReturn = 0
+  triggerFeedReturn = 0,
+  surfacePosition
 }) => {
   // CRITICAL: Only select activeCreature, not currentAnimation to prevent unnecessary re-renders
   // Animation state changes should NOT cause Canvas to re-render
@@ -118,6 +120,7 @@ const ARViewer: React.FC<ARViewerProps> = memo(({
               obstacleZones={obstacleZones}
               enableCollisionDetection={enableCollisionDetection}
               triggerFeedReturn={triggerFeedReturn}
+              surfacePosition={surfacePosition}
             />
           ) : (
             // Keep a placeholder to maintain scene structure
