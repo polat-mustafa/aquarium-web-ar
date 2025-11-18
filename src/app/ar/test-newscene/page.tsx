@@ -72,10 +72,23 @@ function TestNewSceneContent() {
     pose: 0
   });
 
-  // WebXR surface detection
+  // WebXR surface detection with depth and dimensions
   const [detectedSurfaces, setDetectedSurfaces] = useState<number>(0);
   const [webxrStatus, setWebxrStatus] = useState<string>('Off');
-  const [surfacePoses, setSurfacePoses] = useState<Array<{ position: [number, number, number]; size: [number, number] }>>([]);
+  const [surfacePoses, setSurfacePoses] = useState<Array<{
+    position: [number, number, number];
+    size: [number, number];
+    depth: number;
+    dimensions: { width: number; height: number; depth: number };
+    volume: number;
+  }>>([]);
+  const [detectedObjects, setDetectedObjects] = useState<Array<{
+    id: string;
+    position: [number, number, number];
+    dimensions: { width: number; height: number; depth: number };
+    volume: number;
+    type: 'table' | 'floor' | 'wall' | 'object';
+  }>>([]);
 
   // POKEMON GO STYLE: Placed organisms tracking
   const [placedOrganisms, setPlacedOrganisms] = useState<Array<{
@@ -526,29 +539,124 @@ function TestNewSceneContent() {
                 setWebxrStatus('Detecting');
                 setDetectionCounts(prev => ({ ...prev, webxr: 1 }));
 
-                // Extract surface poses
-                const poses: Array<{ position: [number, number, number]; size: [number, number] }> = [];
+                // Extract surface poses with depth and dimension calculations
+                const poses: Array<{
+                  position: [number, number, number];
+                  size: [number, number];
+                  depth: number;
+                  dimensions: { width: number; height: number; depth: number };
+                  volume: number;
+                }> = [];
 
-                for (const hitTestResult of hitTestResults) {
+                const objects: Array<{
+                  id: string;
+                  position: [number, number, number];
+                  dimensions: { width: number; height: number; depth: number };
+                  volume: number;
+                  type: 'table' | 'floor' | 'wall' | 'object';
+                }> = [];
+
+                const zones: ObstacleZone[] = [];
+
+                for (let i = 0; i < hitTestResults.length; i++) {
+                  const hitTestResult = hitTestResults[i];
                   const hitPose = hitTestResult.getPose(xrRefSpace);
+
                   if (hitPose) {
                     const pos = hitPose.transform.position;
+                    const orientation = hitPose.transform.orientation;
+
+                    // Calculate depth (distance from camera)
+                    const depth = Math.sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
+
+                    // Estimate dimensions based on surface normal and depth
+                    // Assume horizontal surface if Y component of normal is strong
+                    const isHorizontal = Math.abs(orientation.y) > 0.7;
+
+                    // Estimate object size (larger depth = larger estimated size)
+                    const estimatedWidth = Math.max(0.5, Math.min(2.0, depth * 0.4));
+                    const estimatedHeight = isHorizontal ? 0.1 : Math.max(0.5, depth * 0.3);
+                    const estimatedDepth = Math.max(0.5, Math.min(2.0, depth * 0.4));
+
+                    // Calculate volume (in cubic meters)
+                    const volume = estimatedWidth * estimatedHeight * estimatedDepth;
+
+                    // Classify object type based on position and orientation
+                    let objectType: 'table' | 'floor' | 'wall' | 'object' = 'object';
+                    if (isHorizontal && pos.y < -0.5) {
+                      objectType = 'floor';
+                    } else if (isHorizontal && pos.y > -0.5 && pos.y < 0.5) {
+                      objectType = 'table';
+                    } else if (!isHorizontal) {
+                      objectType = 'wall';
+                    }
+
                     poses.push({
                       position: [pos.x, pos.y, pos.z],
-                      size: [0.5, 0.5]
+                      size: [estimatedWidth, estimatedDepth],
+                      depth: depth,
+                      dimensions: {
+                        width: estimatedWidth,
+                        height: estimatedHeight,
+                        depth: estimatedDepth
+                      },
+                      volume: volume
+                    });
+
+                    // Create detected object
+                    objects.push({
+                      id: `webxr-object-${i}`,
+                      position: [pos.x, pos.y, pos.z],
+                      dimensions: {
+                        width: estimatedWidth,
+                        height: estimatedHeight,
+                        depth: estimatedDepth
+                      },
+                      volume: volume,
+                      type: objectType
+                    });
+
+                    // Create obstacle zone for collision detection
+                    // Convert 3D world position to 2D screen space (approximate)
+                    const screenX = (pos.x / depth) * 0.5 + 0.5; // Normalize to 0-1
+                    const screenY = (-pos.y / depth) * 0.5 + 0.5; // Normalize to 0-1
+                    const screenWidth = (estimatedWidth / depth) * 0.3; // Scale by depth
+                    const screenHeight = (estimatedHeight / depth) * 0.3;
+
+                    zones.push({
+                      id: `webxr-zone-${i}`,
+                      x: Math.max(0, Math.min(1, screenX - screenWidth / 2)),
+                      y: Math.max(0, Math.min(1, screenY - screenHeight / 2)),
+                      width: Math.min(screenWidth, 1),
+                      height: Math.min(screenHeight, 1),
+                      depth: depth,
+                      type: 'object',
+                      confidence: 0.9
                     });
                   }
                 }
 
                 setSurfacePoses(poses);
+                setDetectedObjects(objects);
+
+                // Merge WebXR obstacles with existing obstacles
+                setObstacleZones(prev => {
+                  // Keep non-WebXR obstacles, add new WebXR obstacles
+                  const nonWebXR = prev.filter(z => !z.id.startsWith('webxr-zone-'));
+                  return [...nonWebXR, ...zones];
+                });
 
                 // Enable placement when surface detected
                 setCanPlace(true);
               } else {
                 setDetectedSurfaces(0);
                 setSurfacePoses([]);
+                setDetectedObjects([]);
                 setDetectionCounts(prev => ({ ...prev, webxr: 0 }));
                 setCanPlace(false);
+
+                // Remove WebXR obstacles
+                setObstacleZones(prev => prev.filter(z => !z.id.startsWith('webxr-zone-')));
               }
             }
           } catch (err) {
@@ -1301,8 +1409,127 @@ function TestNewSceneContent() {
         </div>
       )}
 
-      {/* Surface Visualization - WebXR Detected Surfaces */}
-      {surfacePoses.length > 0 && !placementMode && (
+      {/* Object Detection Visualization - Enhanced with Dimensions & Volume */}
+      {detectedObjects.length > 0 && !placementMode && (
+        <div className="fixed inset-0 z-25 pointer-events-none">
+          {detectedObjects.map((obj, index) => {
+            // Get object type color
+            const getObjectColor = () => {
+              switch (obj.type) {
+                case 'table': return { border: '#ff9800', bg: 'rgba(255, 152, 0, 0.15)', label: 'Table' };
+                case 'floor': return { border: '#4caf50', bg: 'rgba(76, 175, 80, 0.15)', label: 'Floor' };
+                case 'wall': return { border: '#2196f3', bg: 'rgba(33, 150, 243, 0.15)', label: 'Wall' };
+                default: return { border: '#00ffff', bg: 'rgba(0, 255, 255, 0.15)', label: 'Object' };
+              }
+            };
+            const colors = getObjectColor();
+
+            // Convert world position to screen space (simplified projection)
+            const depth = Math.sqrt(
+              obj.position[0] * obj.position[0] +
+              obj.position[1] * obj.position[1] +
+              obj.position[2] * obj.position[2]
+            );
+            const screenX = (obj.position[0] / depth) * 200 + window.innerWidth / 2;
+            const screenY = (-obj.position[1] / depth) * 200 + window.innerHeight / 2;
+            const visualWidth = (obj.dimensions.width / depth) * 300;
+            const visualHeight = (obj.dimensions.height / depth) * 300;
+
+            return (
+              <div
+                key={obj.id}
+                className="absolute"
+                style={{
+                  left: `${screenX}px`,
+                  top: `${screenY}px`,
+                  transform: 'translate(-50%, -50%)',
+                  width: `${Math.max(150, visualWidth)}px`,
+                  height: `${Math.max(150, visualHeight)}px`,
+                  border: `3px solid ${colors.border}`,
+                  borderRadius: '12px',
+                  backgroundColor: colors.bg,
+                  boxShadow: `0 0 30px ${colors.border}80, inset 0 0 20px ${colors.border}40`,
+                  animation: 'objectPulse 2s ease-in-out infinite',
+                  animationDelay: `${index * 0.3}s`
+                }}
+              >
+                {/* Object info card */}
+                <div className="absolute -top-32 left-1/2 transform -translate-x-1/2 w-64">
+                  <div className={`bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl text-white p-3 rounded-xl border-2 shadow-2xl`}
+                    style={{ borderColor: colors.border }}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">
+                          {obj.type === 'table' ? '🪑' : obj.type === 'floor' ? '🌍' : obj.type === 'wall' ? '🧱' : '📦'}
+                        </span>
+                        <span className="font-bold text-sm">{colors.label} #{index + 1}</span>
+                      </div>
+                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                        {depth.toFixed(2)}m away
+                      </span>
+                    </div>
+
+                    {/* Dimensions */}
+                    <div className="space-y-1 text-xs mb-2">
+                      <div className="flex justify-between">
+                        <span className="text-slate-300">Width:</span>
+                        <span className="font-mono font-bold">{(obj.dimensions.width * 100).toFixed(1)} cm</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-300">Height:</span>
+                        <span className="font-mono font-bold">{(obj.dimensions.height * 100).toFixed(1)} cm</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-300">Depth:</span>
+                        <span className="font-mono font-bold">{(obj.dimensions.depth * 100).toFixed(1)} cm</span>
+                      </div>
+                    </div>
+
+                    {/* Volume */}
+                    <div className="pt-2 border-t border-white/20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300 text-xs">Volume:</span>
+                        <span className="font-mono font-bold text-sm" style={{ color: colors.border }}>
+                          {obj.volume < 1
+                            ? `${(obj.volume * 1000).toFixed(0)} L`
+                            : `${obj.volume.toFixed(2)} m³`
+                          }
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Collision indicator */}
+                    <div className="mt-2 pt-2 border-t border-white/20">
+                      <div className="flex items-center space-x-2 text-xs">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        <span className="text-green-400 font-medium">Collision Active</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3D Box corner markers */}
+                <div className="absolute -top-2 -left-2 w-5 h-5 border-t-4 border-l-4 rounded-tl-lg" style={{ borderColor: colors.border }}></div>
+                <div className="absolute -top-2 -right-2 w-5 h-5 border-t-4 border-r-4 rounded-tr-lg" style={{ borderColor: colors.border }}></div>
+                <div className="absolute -bottom-2 -left-2 w-5 h-5 border-b-4 border-l-4 rounded-bl-lg" style={{ borderColor: colors.border }}></div>
+                <div className="absolute -bottom-2 -right-2 w-5 h-5 border-b-4 border-r-4 rounded-br-lg" style={{ borderColor: colors.border }}></div>
+
+                {/* Center depth indicator */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                  <div className="w-8 h-8 rounded-full border-4 flex items-center justify-center animate-ping"
+                    style={{ borderColor: colors.border, backgroundColor: colors.bg }}
+                  ></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Surface Visualization - Fallback for placement mode */}
+      {surfacePoses.length > 0 && !placementMode && detectedObjects.length === 0 && (
         <div className="fixed inset-0 z-25 pointer-events-none">
           {surfacePoses.map((surface, index) => (
             <div
@@ -1325,9 +1552,6 @@ function TestNewSceneContent() {
                 <div className="flex items-center space-x-2">
                   <span>📍</span>
                   <span>Surface {index + 1}</span>
-                </div>
-                <div className="text-[10px] text-cyan-100 mt-0.5">
-                  Position: ({surface.position[0].toFixed(2)}, {surface.position[1].toFixed(2)}, {surface.position[2].toFixed(2)})
                 </div>
               </div>
               {/* Corner markers */}
@@ -1419,7 +1643,7 @@ function TestNewSceneContent() {
         <ARViewer
           className="w-full h-full"
           obstacleZones={obstacleZones}
-          enableCollisionDetection={depthSensingMode !== 'none'}
+          enableCollisionDetection={depthSensingMode !== 'none' || detectedObjects.length > 0}
           triggerFeedReturn={triggerFeedReturn}
           surfacePosition={surfacePoses.length > 0 ? surfacePoses[0].position : undefined}
           placedOrganisms={placedOrganisms}
@@ -1744,7 +1968,7 @@ function TestNewSceneContent() {
         onDecline={handlePrivacyDecline}
       />
 
-      {/* Feeding Animation Styles */}
+      {/* Animation Styles */}
       <style jsx>{`
         @keyframes foodDrop {
           0% {
@@ -1769,6 +1993,17 @@ function TestNewSceneContent() {
           50% {
             opacity: 0.7;
             transform: translate(-50%, -50%) scale(1.05);
+          }
+        }
+
+        @keyframes objectPulse {
+          0%, 100% {
+            opacity: 0.9;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          50% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.02);
           }
         }
       `}</style>
