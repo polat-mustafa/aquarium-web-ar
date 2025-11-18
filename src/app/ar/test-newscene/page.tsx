@@ -49,8 +49,9 @@ function TestNewSceneContent() {
   const [showZoomIndicator, setShowZoomIndicator] = useState(false);
   const zoomIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // DEPTH SENSING STATES - All disabled by default for performance
-  const [depthSensingMode, setDepthSensingMode] = useState<DepthSensingMode>('none');
+  // DEPTH SENSING STATES - Support multiple modes simultaneously
+  const [activeModes, setActiveModes] = useState<Set<DepthSensingMode>>(new Set(['none']));
+  const [depthSensingMode, setDepthSensingMode] = useState<DepthSensingMode>('none'); // Legacy for single mode
   const [obstacleZones, setObstacleZones] = useState<ObstacleZone[]>([]);
   const [showDepthVisualization, setShowDepthVisualization] = useState(false);
   const [showScanningAnimation, setShowScanningAnimation] = useState(false);
@@ -60,6 +61,7 @@ function TestNewSceneContent() {
   const [showQuickTip, setShowQuickTip] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deviceCapabilities, setDeviceCapabilities] = useState<DeviceCapabilities | null>(null);
+  const [isRunningAll, setIsRunningAll] = useState(false);
 
   // FEEDING STATES
   const [isFeedingAnimation, setIsFeedingAnimation] = useState(false);
@@ -339,6 +341,8 @@ function TestNewSceneContent() {
 
     if (mode === 'none') {
       depthManagerRef.current.stop();
+      setActiveModes(new Set(['none']));
+      setIsRunningAll(false);
       console.log('⏹️ Depth sensing stopped');
       return;
     }
@@ -374,6 +378,7 @@ function TestNewSceneContent() {
       );
 
       setDepthSensorReady(true);
+      setActiveModes(new Set([mode]));
       console.log(`✅ ${mode.toUpperCase()} initialized successfully`);
     } catch (error: any) {
       console.error(`❌ ${mode} initialization failed:`, error);
@@ -382,6 +387,68 @@ function TestNewSceneContent() {
       setDepthSensingMode('none');
     }
   }, [isCameraReady]);
+
+  // RUN ALL MODES: Handle running all tracking simultaneously
+  const handleRunAll = useCallback(async () => {
+    console.log('🚀 Starting ALL tracking modes simultaneously...');
+    setIsRunningAll(true);
+    setErrorMessage(null);
+    setShowDepthVisualization(true);
+    setShowScanningAnimation(true);
+
+    if (!videoRef.current || !isCameraReady) {
+      setErrorMessage('Camera not ready. Please wait.');
+      setIsRunningAll(false);
+      return;
+    }
+
+    const modes: DepthSensingMode[] = ['mediapipe', 'tensorflow'];
+    const successfulModes = new Set<DepthSensingMode>();
+
+    // Try WebXR if supported
+    if (deviceCapabilities?.webxr.supported !== false) {
+      modes.push('webxr');
+    }
+
+    // Start all modes
+    for (const mode of modes) {
+      try {
+        console.log(`📡 Starting ${mode}...`);
+        await depthManagerRef.current.setMode(
+          mode,
+          videoRef.current,
+          (zones: ObstacleZone[]) => {
+            setObstacleZones(prev => [...prev, ...zones]);
+          }
+        );
+        successfulModes.add(mode);
+        console.log(`✅ ${mode.toUpperCase()} started`);
+      } catch (error: any) {
+        console.error(`❌ ${mode} failed:`, error);
+      }
+    }
+
+    if (successfulModes.size > 0) {
+      setActiveModes(successfulModes);
+      setDepthSensorReady(true);
+      setDepthSensingMode('mediapipe'); // Set primary mode
+      console.log(`✅ Running ${successfulModes.size} modes:`, Array.from(successfulModes).join(', '));
+    } else {
+      setErrorMessage('Failed to start any tracking mode');
+      setIsRunningAll(false);
+    }
+  }, [isCameraReady, deviceCapabilities]);
+
+  // STOP ALL MODES
+  const handleStopAll = useCallback(() => {
+    console.log('⏹️ Stopping all tracking modes...');
+    depthManagerRef.current.stop();
+    setIsRunningAll(false);
+    setActiveModes(new Set(['none']));
+    setDepthSensingMode('none');
+    setDepthSensorReady(false);
+    setObstacleZones([]);
+  }, []);
 
   // Clean up on unmount
   useEffect(() => {
@@ -737,9 +804,42 @@ function TestNewSceneContent() {
               Tracking (Optional)
             </h3>
             <span className="text-xs text-yellow-400">
-              May slow device
+              {isRunningAll ? `${activeModes.size} active` : 'May slow device'}
             </span>
           </div>
+
+          {/* RUN ALL BUTTON */}
+          <div className="mb-3">
+            {!isRunningAll ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRunAll();
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                🚀 Run All at the Same Time
+              </button>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStopAll();
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="w-full px-4 py-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg animate-pulse"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                ⏹️ Stop All Tracking
+              </button>
+            )}
+          </div>
+
+          <div className="border-t border-slate-600 mb-3"></div>
+
+          <p className="text-xs text-slate-400 mb-3 text-center">Or select individual mode:</p>
 
           <div className="space-y-2 max-h-60 overflow-y-auto">
             <button
@@ -748,9 +848,12 @@ function TestNewSceneContent() {
                 handleDepthModeChange('none');
               }}
               onTouchStart={(e) => e.stopPropagation()}
+              disabled={isRunningAll}
               className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                depthSensingMode === 'none'
+                depthSensingMode === 'none' && !isRunningAll
                   ? 'bg-cyan-500 text-white shadow-lg'
+                  : isRunningAll
+                  ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed opacity-50'
                   : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
               }`}
               style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -764,9 +867,12 @@ function TestNewSceneContent() {
                 handleDepthModeChange('mediapipe');
               }}
               onTouchStart={(e) => e.stopPropagation()}
+              disabled={isRunningAll}
               className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                depthSensingMode === 'mediapipe'
+                (depthSensingMode === 'mediapipe' || activeModes.has('mediapipe'))
                   ? 'bg-green-500 text-white shadow-lg'
+                  : isRunningAll
+                  ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed opacity-50'
                   : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
               }`}
               style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -774,7 +880,7 @@ function TestNewSceneContent() {
               <div className="flex flex-col">
                 <div className="flex items-center justify-between">
                   <span>✋ MediaPipe Hands</span>
-                  {depthSensingMode === 'mediapipe' && depthSensorReady && (
+                  {activeModes.has('mediapipe') && depthSensorReady && (
                     <span className="text-xs bg-green-600 px-2 py-0.5 rounded">Active</span>
                   )}
                 </div>
@@ -788,11 +894,11 @@ function TestNewSceneContent() {
                 handleDepthModeChange('webxr');
               }}
               onTouchStart={(e) => e.stopPropagation()}
-              disabled={deviceCapabilities?.webxr.supported === false}
+              disabled={deviceCapabilities?.webxr.supported === false || isRunningAll}
               className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                depthSensingMode === 'webxr'
+                (depthSensingMode === 'webxr' || activeModes.has('webxr'))
                   ? 'bg-cyan-500 text-white shadow-lg'
-                  : deviceCapabilities?.webxr.supported === false
+                  : deviceCapabilities?.webxr.supported === false || isRunningAll
                   ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed opacity-50'
                   : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
               }`}
@@ -801,7 +907,7 @@ function TestNewSceneContent() {
               <div className="flex flex-col">
                 <div className="flex items-center justify-between">
                   <span>🥽 WebXR Depth</span>
-                  {depthSensingMode === 'webxr' && depthSensorReady && (
+                  {activeModes.has('webxr') && depthSensorReady && (
                     <span className="text-xs bg-cyan-600 px-2 py-0.5 rounded">Active</span>
                   )}
                 </div>
@@ -817,9 +923,12 @@ function TestNewSceneContent() {
                 handleDepthModeChange('tensorflow');
               }}
               onTouchStart={(e) => e.stopPropagation()}
+              disabled={isRunningAll}
               className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                depthSensingMode === 'tensorflow'
+                (depthSensingMode === 'tensorflow' || activeModes.has('tensorflow'))
                   ? 'bg-purple-500 text-white shadow-lg'
+                  : isRunningAll
+                  ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed opacity-50'
                   : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
               }`}
               style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -827,7 +936,7 @@ function TestNewSceneContent() {
               <div className="flex flex-col">
                 <div className="flex items-center justify-between">
                   <span>🧠 TensorFlow.js</span>
-                  {depthSensingMode === 'tensorflow' && depthSensorReady && (
+                  {activeModes.has('tensorflow') && depthSensorReady && (
                     <span className="text-xs bg-purple-600 px-2 py-0.5 rounded">Active</span>
                   )}
                 </div>
