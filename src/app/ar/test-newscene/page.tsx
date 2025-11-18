@@ -1549,6 +1549,92 @@ function TestNewSceneContent() {
         </div>
       )}
 
+      {/* Distance Lines from Fish to Objects */}
+      {detectedObjects.length > 0 && activeCreature && !placementMode && (
+        <svg className="fixed inset-0 z-20 pointer-events-none" style={{ width: '100%', height: '100%' }}>
+          {detectedObjects.map((obj, index) => {
+            // Calculate distance
+            const distance = Math.sqrt(
+              obj.position[0] * obj.position[0] +
+              obj.position[1] * obj.position[1] +
+              obj.position[2] * obj.position[2]
+            );
+
+            // Fish is at center of screen
+            const fishX = typeof window !== 'undefined' ? window.innerWidth / 2 : 0;
+            const fishY = typeof window !== 'undefined' ? window.innerHeight / 2 : 0;
+
+            // Project object position to screen (simplified)
+            const objX = fishX + (obj.position[0] / distance) * 150;
+            const objY = fishY - (obj.position[1] / distance) * 150;
+
+            // Color based on object type
+            const color = obj.type === 'table' ? '#ff9800' : obj.type === 'wall' ? '#2196f3' : '#4caf50';
+
+            // Mid point for label
+            const midX = (fishX + objX) / 2;
+            const midY = (fishY + objY) / 2;
+
+            return (
+              <g key={obj.id}>
+                {/* Dotted line from fish to object */}
+                <line
+                  x1={fishX}
+                  y1={fishY}
+                  x2={objX}
+                  y2={objY}
+                  stroke={color}
+                  strokeWidth="2"
+                  strokeDasharray="5,5"
+                  opacity="0.6"
+                />
+
+                {/* Distance label */}
+                <text
+                  x={midX}
+                  y={midY - 8}
+                  fill="white"
+                  fontSize="12"
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  style={{
+                    textShadow: '0 0 4px rgba(0,0,0,0.8)',
+                    filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))'
+                  }}
+                >
+                  {distance.toFixed(2)}m
+                </text>
+
+                {/* Object type label */}
+                <text
+                  x={midX}
+                  y={midY + 10}
+                  fill={color}
+                  fontSize="10"
+                  fontWeight="600"
+                  textAnchor="middle"
+                  style={{
+                    textShadow: '0 0 4px rgba(0,0,0,0.8)',
+                    filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))'
+                  }}
+                >
+                  {obj.type}
+                </text>
+
+                {/* Endpoint dot */}
+                <circle
+                  cx={objX}
+                  cy={objY}
+                  r="4"
+                  fill={color}
+                  opacity="0.8"
+                />
+              </g>
+            );
+          })}
+        </svg>
+      )}
+
       {/* Surface Visualization - Removed (kept clean) */}
 
       {/* Obstacle Zone Visualization */}
