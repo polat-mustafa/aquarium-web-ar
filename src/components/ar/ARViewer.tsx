@@ -24,6 +24,11 @@ interface ARViewerProps {
   enableCollisionDetection?: boolean;
   triggerFeedReturn?: number;
   surfacePosition?: [number, number, number];
+  placedOrganisms?: Array<{
+    id: string;
+    position: [number, number, number];
+    creature: any;
+  }>;
 }
 
 // Static camera settings (never change)
@@ -55,7 +60,8 @@ const ARViewer: React.FC<ARViewerProps> = memo(({
   obstacleZones = [],
   enableCollisionDetection = false,
   triggerFeedReturn = 0,
-  surfacePosition
+  surfacePosition,
+  placedOrganisms = []
 }) => {
   // CRITICAL: Only select activeCreature, not currentAnimation to prevent unnecessary re-renders
   // Animation state changes should NOT cause Canvas to re-render
@@ -111,6 +117,7 @@ const ARViewer: React.FC<ARViewerProps> = memo(({
         <hemisphereLight intensity={2} />
 
         <ARScene>
+          {/* Main active creature (camera-following) */}
           {activeCreature ? (
             <CreatureModel
               key={activeCreature.id}
@@ -126,6 +133,19 @@ const ARViewer: React.FC<ARViewerProps> = memo(({
             // Keep a placeholder to maintain scene structure
             <group />
           )}
+
+          {/* Pokemon GO Style: Render all placed organisms at their world positions */}
+          {placedOrganisms.map((organism) => (
+            <CreatureModel
+              key={organism.id}
+              creature={organism.creature}
+              position={organism.position}
+              scale={organism.creature.scale || 1.5}
+              obstacleZones={[]}
+              enableCollisionDetection={false}
+              triggerFeedReturn={0}
+            />
+          ))}
         </ARScene>
 
         {debug && (

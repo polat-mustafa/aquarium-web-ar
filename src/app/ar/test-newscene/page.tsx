@@ -77,6 +77,15 @@ function TestNewSceneContent() {
   const [webxrStatus, setWebxrStatus] = useState<string>('Off');
   const [surfacePoses, setSurfacePoses] = useState<Array<{ position: [number, number, number]; size: [number, number] }>>([]);
 
+  // POKEMON GO STYLE: Placed organisms tracking
+  const [placedOrganisms, setPlacedOrganisms] = useState<Array<{
+    id: string;
+    position: [number, number, number];
+    creature: any;
+  }>>([]);
+  const [placementMode, setPlacementMode] = useState(false);
+  const [canPlace, setCanPlace] = useState(false);
+
   // FEEDING STATES
   const [isFeedingAnimation, setIsFeedingAnimation] = useState(false);
   const [feedPosition, setFeedPosition] = useState<[number, number] | null>(null);
@@ -532,10 +541,14 @@ function TestNewSceneContent() {
                 }
 
                 setSurfacePoses(poses);
+
+                // Enable placement when surface detected
+                setCanPlace(true);
               } else {
                 setDetectedSurfaces(0);
                 setSurfacePoses([]);
                 setDetectionCounts(prev => ({ ...prev, webxr: 0 }));
+                setCanPlace(false);
               }
             }
           } catch (err) {
@@ -635,12 +648,45 @@ function TestNewSceneContent() {
     }, 2000);
   }, []);
 
-  // Handle screen tap for bubble effects
+  // Handle screen tap for bubble effects and placement
   const handleScreenTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
     const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
 
+    // POKEMON GO STYLE: Place organism on tap if in placement mode
+    if (placementMode && canPlace && surfacePoses.length > 0 && activeCreature) {
+      const surfacePos = surfacePoses[0].position;
+
+      // Place organism at detected surface with slight random offset
+      const newOrganism = {
+        id: `placed-${Date.now()}`,
+        position: [
+          surfacePos[0] + (Math.random() - 0.5) * 0.5, // Small random X offset
+          surfacePos[1] + 0.2, // Slightly above surface
+          surfacePos[2] + (Math.random() - 0.5) * 0.5  // Small random Z offset
+        ] as [number, number, number],
+        creature: { ...activeCreature }
+      };
+
+      setPlacedOrganisms(prev => [...prev, newOrganism]);
+      console.log('🐟 Placed organism at:', newOrganism.position);
+
+      // Show bubble effect at placement
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      const placementBubbles = Array.from({ length: 8 }, (_, i) => ({
+        id: Date.now() + 1000 + i,
+        x: centerX + (Math.random() - 0.5) * 60,
+        y: centerY + (Math.random() - 0.5) * 60,
+        opacity: 1,
+      }));
+      setBubbles(prev => [...prev, ...placementBubbles]);
+
+      return;
+    }
+
+    // Regular bubble effects
     const newBubbles = Array.from({ length: 5 }, (_, i) => ({
       id: Date.now() + i,
       x: x + (Math.random() - 0.5) * 40,
@@ -671,7 +717,7 @@ function TestNewSceneContent() {
         );
       }
     }, 16);
-  }, []);
+  }, [placementMode, canPlace, surfacePoses, activeCreature]);
 
   // Handle pinch zoom
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -1212,8 +1258,51 @@ function TestNewSceneContent() {
         />
       )}
 
+      {/* Placement Reticle - Pokemon GO Style */}
+      {placementMode && canPlace && surfacePoses.length > 0 && (
+        <div className="fixed inset-0 z-30 pointer-events-none flex items-center justify-center">
+          {/* Center reticle indicator */}
+          <div className="relative">
+            {/* Outer ring with pulse */}
+            <div className="absolute inset-0 w-32 h-32 border-4 border-green-400 rounded-full animate-ping opacity-75"></div>
+
+            {/* Main reticle */}
+            <div className="relative w-32 h-32 border-4 border-green-500 rounded-full bg-green-400/10 backdrop-blur-sm shadow-2xl flex items-center justify-center">
+              {/* Crosshair lines */}
+              <div className="absolute w-full h-0.5 bg-green-400"></div>
+              <div className="absolute w-0.5 h-full bg-green-400"></div>
+
+              {/* Center dot */}
+              <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg"></div>
+
+              {/* Corner markers */}
+              <div className="absolute -top-2 -left-2 w-4 h-4 border-t-4 border-l-4 border-green-400 rounded-tl-lg"></div>
+              <div className="absolute -top-2 -right-2 w-4 h-4 border-t-4 border-r-4 border-green-400 rounded-tr-lg"></div>
+              <div className="absolute -bottom-2 -left-2 w-4 h-4 border-b-4 border-l-4 border-green-400 rounded-bl-lg"></div>
+              <div className="absolute -bottom-2 -right-2 w-4 h-4 border-b-4 border-r-4 border-green-400 rounded-br-lg"></div>
+            </div>
+
+            {/* Tap instruction */}
+            <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+              <div className="bg-green-500/90 text-white px-4 py-2 rounded-full font-bold text-sm shadow-xl border-2 border-green-300 animate-bounce">
+                👆 Tap to Place {activeCreature?.name || 'Organism'}
+              </div>
+            </div>
+
+            {/* Placed count */}
+            {placedOrganisms.length > 0 && (
+              <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
+                <div className="bg-blue-500/90 text-white px-3 py-1 rounded-full font-bold text-xs shadow-lg border border-blue-300">
+                  🐟 {placedOrganisms.length} Placed
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Surface Visualization - WebXR Detected Surfaces */}
-      {surfacePoses.length > 0 && (
+      {surfacePoses.length > 0 && !placementMode && (
         <div className="fixed inset-0 z-25 pointer-events-none">
           {surfacePoses.map((surface, index) => (
             <div
@@ -1333,6 +1422,7 @@ function TestNewSceneContent() {
           enableCollisionDetection={depthSensingMode !== 'none'}
           triggerFeedReturn={triggerFeedReturn}
           surfacePosition={surfacePoses.length > 0 ? surfacePoses[0].position : undefined}
+          placedOrganisms={placedOrganisms}
         />
 
         {/* Bubble effects */}
@@ -1411,6 +1501,42 @@ function TestNewSceneContent() {
 
         {/* AR Controls - Mobile Optimized */}
         <div className="absolute bottom-32 right-4 z-40 flex flex-col space-y-3 pointer-events-auto sm:bottom-36">
+          {/* Placement Mode Toggle - Pokemon GO Style */}
+          {activeModes.has('webxr') && activeCreature && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setPlacementMode(!placementMode);
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all ${
+                placementMode
+                  ? 'bg-gradient-to-br from-green-500 to-emerald-600 animate-pulse'
+                  : 'bg-gradient-to-br from-purple-500 to-indigo-600 hover:scale-110 active:scale-95'
+              }`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+              aria-label={placementMode ? 'Exit Placement Mode' : 'Enter Placement Mode'}
+            >
+              <span className="text-2xl">{placementMode ? '✓' : '📍'}</span>
+            </button>
+          )}
+
+          {/* Clear Placed Organisms */}
+          {placedOrganisms.length > 0 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setPlacedOrganisms([]);
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 hover:scale-110 active:scale-95 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+              aria-label="Clear Placed Organisms"
+            >
+              <span className="text-2xl">🗑️</span>
+            </button>
+          )}
+
           {/* Feeding Button */}
           {depthSensingMode !== 'none' && (
             <button
