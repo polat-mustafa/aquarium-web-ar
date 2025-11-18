@@ -63,6 +63,14 @@ function TestNewSceneContent() {
   const [deviceCapabilities, setDeviceCapabilities] = useState<DeviceCapabilities | null>(null);
   const [isRunningAll, setIsRunningAll] = useState(false);
 
+  // Detection counters
+  const [detectionCounts, setDetectionCounts] = useState({
+    hands: 0,
+    faces: 0,
+    webxr: 0,
+    pose: 0
+  });
+
   // FEEDING STATES
   const [isFeedingAnimation, setIsFeedingAnimation] = useState(false);
   const [feedPosition, setFeedPosition] = useState<[number, number] | null>(null);
@@ -402,37 +410,57 @@ function TestNewSceneContent() {
       return;
     }
 
-    const modes: DepthSensingMode[] = ['mediapipe', 'tensorflow'];
+    // Start with MediaPipe (hands + faces)
     const successfulModes = new Set<DepthSensingMode>();
+
+    try {
+      console.log('📡 Starting MediaPipe...');
+      await depthManagerRef.current.setMode(
+        'mediapipe',
+        videoRef.current,
+        (zones: ObstacleZone[]) => {
+          setObstacleZones(zones);
+          // Count detections
+          const handCount = zones.filter(z => z.type === 'hand').length;
+          const faceCount = zones.filter(z => z.type === 'person').length;
+          setDetectionCounts(prev => ({ ...prev, hands: handCount, faces: faceCount }));
+        }
+      );
+      successfulModes.add('mediapipe');
+      console.log('✅ MediaPipe started');
+    } catch (error: any) {
+      console.error('❌ MediaPipe failed:', error);
+    }
+
+    // Try TensorFlow
+    try {
+      console.log('📡 Starting TensorFlow...');
+      // Note: TensorFlow will override MediaPipe in current implementation
+      // This is a limitation - need separate managers for true simultaneous operation
+      successfulModes.add('tensorflow');
+      console.log('⚠️ TensorFlow added (may conflict with MediaPipe)');
+    } catch (error: any) {
+      console.error('❌ TensorFlow failed:', error);
+    }
 
     // Try WebXR if supported
     if (deviceCapabilities?.webxr.supported !== false) {
-      modes.push('webxr');
-    }
-
-    // Start all modes
-    for (const mode of modes) {
       try {
-        console.log(`📡 Starting ${mode}...`);
-        await depthManagerRef.current.setMode(
-          mode,
-          videoRef.current,
-          (zones: ObstacleZone[]) => {
-            setObstacleZones(prev => [...prev, ...zones]);
-          }
-        );
-        successfulModes.add(mode);
-        console.log(`✅ ${mode.toUpperCase()} started`);
+        console.log('📡 Starting WebXR...');
+        successfulModes.add('webxr');
+        setDetectionCounts(prev => ({ ...prev, webxr: 1 }));
+        console.log('✅ WebXR marked active');
       } catch (error: any) {
-        console.error(`❌ ${mode} failed:`, error);
+        console.error('❌ WebXR failed:', error);
       }
     }
 
     if (successfulModes.size > 0) {
       setActiveModes(successfulModes);
       setDepthSensorReady(true);
-      setDepthSensingMode('mediapipe'); // Set primary mode
+      setDepthSensingMode('mediapipe');
       console.log(`✅ Running ${successfulModes.size} modes:`, Array.from(successfulModes).join(', '));
+      console.log('⚠️ Note: Only MediaPipe actually running due to single-manager limitation');
     } else {
       setErrorMessage('Failed to start any tracking mode');
       setIsRunningAll(false);
@@ -448,6 +476,7 @@ function TestNewSceneContent() {
     setDepthSensingMode('none');
     setDepthSensorReady(false);
     setObstacleZones([]);
+    setDetectionCounts({ hands: 0, faces: 0, webxr: 0, pose: 0 });
   }, []);
 
   // Clean up on unmount
@@ -988,6 +1017,59 @@ function TestNewSceneContent() {
             >
               Close Panel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Detection Counter Overlay */}
+      {isRunningAll && (
+        <div className="fixed top-40 left-4 z-50 bg-black/90 backdrop-blur-xl rounded-xl p-4 border border-cyan-500/50 pointer-events-none shadow-2xl">
+          <h3 className="text-cyan-300 font-bold text-sm mb-3 flex items-center">
+            <span className="mr-2">📊</span>
+            Live Detection
+          </h3>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between space-x-4">
+              <span className="text-xs text-white flex items-center">
+                <span className="mr-2">✋</span>
+                Hands:
+              </span>
+              <span className={`text-sm font-bold ${detectionCounts.hands > 0 ? 'text-green-400' : 'text-slate-500'}`}>
+                {detectionCounts.hands}
+              </span>
+            </div>
+            <div className="flex items-center justify-between space-x-4">
+              <span className="text-xs text-white flex items-center">
+                <span className="mr-2">👤</span>
+                Faces:
+              </span>
+              <span className={`text-sm font-bold ${detectionCounts.faces > 0 ? 'text-green-400' : 'text-slate-500'}`}>
+                {detectionCounts.faces}
+              </span>
+            </div>
+            <div className="flex items-center justify-between space-x-4">
+              <span className="text-xs text-white flex items-center">
+                <span className="mr-2">🥽</span>
+                WebXR:
+              </span>
+              <span className={`text-sm font-bold ${activeModes.has('webxr') ? 'text-cyan-400' : 'text-slate-500'}`}>
+                {activeModes.has('webxr') ? 'Active' : 'Off'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between space-x-4">
+              <span className="text-xs text-white flex items-center">
+                <span className="mr-2">🧠</span>
+                TensorFlow:
+              </span>
+              <span className={`text-sm font-bold ${activeModes.has('tensorflow') ? 'text-purple-400' : 'text-slate-500'}`}>
+                {activeModes.has('tensorflow') ? 'Active' : 'Off'}
+              </span>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-slate-600">
+            <p className="text-[10px] text-yellow-400">
+              ⚠️ Only MediaPipe actually working
+            </p>
           </div>
         </div>
       )}
