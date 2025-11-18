@@ -105,6 +105,10 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
   const pendingHideRef = useRef(0);
   const pendingExploreRef = useRef(0);
 
+  // VISUAL EFFECTS: Opacity for fade in/out when hiding
+  const [modelOpacity, setModelOpacity] = useState(1);
+  const opacityAnimationRef = useRef({ progress: 1, from: 1, to: 1 });
+
   // Get zoom level and speech bubble settings from store
   const zoomLevel = useAppStore((state) => state.zoomLevel);
   const setShowSpeechBubble = useAppStore((state) => state.setShowSpeechBubble);
@@ -382,16 +386,16 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
         bestObject.position[2] * bestObject.position[2]
       );
 
-      // Go behind object with some offset
-      const hideOffset = reason === 'threat' ? 1.5 : 0.8; // Hide deeper when threatened
-      const behindX = bestObject.position[0] + (Math.random() - 0.5) * bestObject.dimensions.width;
-      const behindY = bestObject.position[1] + bestObject.dimensions.height * 0.5;
-      const behindZ = Math.min(-objDepth - hideOffset, -1.5); // Go behind (more negative Z)
+      // ⭐ DRAMATIC: Go FAR behind object with large offset
+      const hideOffset = reason === 'threat' ? 2.5 : 1.5; // MUCH deeper when threatened
+      const behindX = bestObject.position[0] + (Math.random() - 0.5) * bestObject.dimensions.width * 2; // WIDER spread
+      const behindY = bestObject.position[1] + bestObject.dimensions.height * 0.8; // HIGHER position
+      const behindZ = Math.min(-objDepth - hideOffset, -2.0); // Go MUCH deeper behind (more negative Z)
 
-      // Clamp to reasonable bounds
-      const newX = Math.max(-4, Math.min(4, behindX));
-      const newY = Math.max(-2, Math.min(2, behindY));
-      const newZ = Math.max(-8, Math.min(-1.5, behindZ));
+      // Clamp to reasonable bounds (WIDER range)
+      const newX = Math.max(-5, Math.min(5, behindX)); // Wider X range
+      const newY = Math.max(-3, Math.min(3, behindY)); // Wider Y range
+      const newZ = Math.max(-10, Math.min(-2, behindZ)); // MUCH deeper Z range
 
       // Start hiding animation
       positionAnimationRef.current = {
@@ -403,6 +407,14 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
       setIsHiding(true);
       setHidingBehindObject(bestObject.id);
 
+      // ⭐ VISUAL: Start FADE OUT animation (disappear effect)
+      console.log('👻 FADING OUT - Fish disappearing behind object!');
+      opacityAnimationRef.current = {
+        progress: 0,
+        from: modelOpacity,
+        to: 0.15 // Fade to almost invisible
+      };
+
       // Show speech bubble
       setShowSpeechBubble(true);
       setTimeout(() => setShowSpeechBubble(false), speechBubbleDuration);
@@ -410,6 +422,15 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
       // Reset hiding state after animation
       const hideDuration = reason === 'threat' ? 4000 : 3000;
       setTimeout(() => {
+        console.log('👁️ FADING IN - Fish reappearing!');
+
+        // ⭐ VISUAL: Start FADE IN animation (reappear effect)
+        opacityAnimationRef.current = {
+          progress: 0,
+          from: modelOpacity,
+          to: 1.0 // Fade back to fully visible
+        };
+
         setIsHiding(false);
         setHidingBehindObject(null);
 
@@ -551,6 +572,38 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
     // Apply rotation (combine natural swimming with tap rotation)
     groupRef.current.rotation.y = naturalTurnRotation + tapRotation;
     groupRef.current.rotation.z = tiltZ + (isTurning ? Math.sin(turnAnimationRef.current.progress * Math.PI * 2) * 0.5 : 0);
+
+    // ⭐ VISUAL: Animate opacity (fade in/out effect)
+    if (opacityAnimationRef.current.progress < 1) {
+      opacityAnimationRef.current.progress += delta * 2; // Fast fade
+      const progress = Math.min(opacityAnimationRef.current.progress, 1);
+
+      // Smooth easing
+      const eased = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+      // Interpolate opacity
+      const from = opacityAnimationRef.current.from;
+      const to = opacityAnimationRef.current.to;
+      const newOpacity = from + (to - from) * eased;
+
+      setModelOpacity(newOpacity);
+
+      // Apply opacity to model materials
+      if (model) {
+        model.traverse((child: any) => {
+          if (child.isMesh && child.material) {
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.forEach((mat: any) => {
+              mat.transparent = true;
+              mat.opacity = newOpacity;
+              mat.needsUpdate = true;
+            });
+          }
+        });
+      }
+    }
 
     // Keep scale updated with zoom level
     groupRef.current.scale.setScalar(scale * scaleNormalizationRef.current * zoomLevel);

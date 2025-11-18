@@ -105,6 +105,10 @@ function TestNewSceneContent() {
   const [triggerExplore, setTriggerExplore] = useState(0);
   const [triggerDance, setTriggerDance] = useState(0);
 
+  // ⭐ VISUAL INDICATOR: Show when fish is hiding
+  const [showHidingIndicator, setShowHidingIndicator] = useState(false);
+  const [hidingReason, setHidingReason] = useState<'threat' | 'explore'>('threat');
+
   // FEEDING STATES
   const [isFeedingAnimation, setIsFeedingAnimation] = useState(false);
   const [feedPosition, setFeedPosition] = useState<[number, number] | null>(null);
@@ -1372,6 +1376,70 @@ function TestNewSceneContent() {
         />
       )}
 
+      {/* ⭐ BIG HIDING INDICATOR - Shows when fish hides behind object */}
+      {showHidingIndicator && (
+        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
+          <div className="relative animate-bounce">
+            {/* Giant pulsing background */}
+            <div className="absolute inset-0 w-96 h-96 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2">
+              <div className={`w-full h-full rounded-full animate-ping ${
+                hidingReason === 'threat' ? 'bg-red-500/30' : 'bg-blue-500/30'
+              }`}></div>
+            </div>
+
+            {/* Main indicator card */}
+            <div className={`relative bg-gradient-to-br ${
+              hidingReason === 'threat'
+                ? 'from-red-600/95 to-orange-600/95'
+                : 'from-blue-600/95 to-cyan-600/95'
+            } backdrop-blur-xl px-12 py-8 rounded-3xl border-4 ${
+              hidingReason === 'threat' ? 'border-red-300' : 'border-blue-300'
+            } shadow-2xl transform scale-110`}>
+              {/* Icon */}
+              <div className="text-9xl mb-4 animate-pulse">
+                {hidingReason === 'threat' ? '😱' : '🔍'}
+              </div>
+
+              {/* Text */}
+              <div className="text-center">
+                <h2 className="text-5xl font-black text-white mb-2 drop-shadow-lg">
+                  {hidingReason === 'threat' ? 'HIDING!' : 'EXPLORING!'}
+                </h2>
+                <p className="text-2xl text-white/90 font-bold">
+                  {hidingReason === 'threat'
+                    ? 'Fish hiding behind object'
+                    : 'Fish exploring behind'}
+                </p>
+                <p className="text-xl text-white/70 mt-2">
+                  👻 Watch it fade away!
+                </p>
+              </div>
+
+              {/* Animated corner accents */}
+              <div className="absolute -top-4 -left-4 w-16 h-16 border-t-8 border-l-8 border-white rounded-tl-3xl animate-pulse"></div>
+              <div className="absolute -top-4 -right-4 w-16 h-16 border-t-8 border-r-8 border-white rounded-tr-3xl animate-pulse"></div>
+              <div className="absolute -bottom-4 -left-4 w-16 h-16 border-b-8 border-l-8 border-white rounded-bl-3xl animate-pulse"></div>
+              <div className="absolute -bottom-4 -right-4 w-16 h-16 border-b-8 border-r-8 border-white rounded-br-3xl animate-pulse"></div>
+            </div>
+
+            {/* Sparkles effect */}
+            <div className="absolute -inset-20 pointer-events-none">
+              {[...Array(8)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-4 h-4 bg-white rounded-full animate-ping"
+                  style={{
+                    left: `${25 + Math.cos(i * Math.PI / 4) * 40}%`,
+                    top: `${25 + Math.sin(i * Math.PI / 4) * 40}%`,
+                    animationDelay: `${i * 0.1}s`
+                  }}
+                ></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Placement Reticle - Pokemon GO Style */}
       {placementMode && canPlace && surfacePoses.length > 0 && (
         <div className="fixed inset-0 z-30 pointer-events-none flex items-center justify-center">
@@ -1760,6 +1828,11 @@ function TestNewSceneContent() {
                   e.stopPropagation();
                   setTriggerHideBehind(prev => prev + 1);
                   console.log('🧪 TEST: Triggering hide behind object');
+
+                  // ⭐ SHOW BIG HIDING INDICATOR
+                  setHidingReason('threat');
+                  setShowHidingIndicator(true);
+                  setTimeout(() => setShowHidingIndicator(false), 4000);
                 }}
                 onTouchStart={(e) => e.stopPropagation()}
                 className="w-full px-4 py-2 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white rounded-lg font-medium text-sm transition-all shadow-lg"
@@ -1774,6 +1847,11 @@ function TestNewSceneContent() {
                   e.stopPropagation();
                   setTriggerExplore(prev => prev + 1);
                   console.log('🧪 TEST: Triggering explore behind');
+
+                  // ⭐ SHOW BIG EXPLORING INDICATOR
+                  setHidingReason('explore');
+                  setShowHidingIndicator(true);
+                  setTimeout(() => setShowHidingIndicator(false), 3000);
                 }}
                 onTouchStart={(e) => e.stopPropagation()}
                 className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg font-medium text-sm transition-all shadow-lg"
