@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
 import { CreatureModel } from '@/components/ar/CreatureModel';
@@ -10,6 +11,8 @@ import type { QRDetectionResult } from '@/utils/qrDetection';
 import type { SeaCreature } from '@/types';
 import { LoginForm } from '@/components/dashboard/LoginForm';
 import { isAuthenticated as checkAuth, logout } from '@/utils/auth';
+import { MODEL_REGISTRY } from '@/utils/modelMatcher';
+import { galleryCreatures } from '@/utils/galleryData';
 
 type TestStatus = 'idle' | 'running' | 'success' | 'error';
 
@@ -21,7 +24,10 @@ interface TestResult {
   timestamp?: Date;
 }
 
-export default function TestWebXRPage() {
+function TestWebXRContent() {
+  const searchParams = useSearchParams();
+  const creatureParam = searchParams.get('creature');
+
   // Auth state
   const [isAuth, setIsAuth] = useState(false);
 
@@ -192,6 +198,64 @@ export default function TestWebXRPage() {
     setQrData(null);
     setActiveTest(null);
   };
+
+  // Auto-load model from URL parameter
+  useEffect(() => {
+    if (creatureParam && isAuth) {
+      let resolvedName: string | undefined = undefined;
+      let resolvedType: string = 'fish';
+      let resolvedModelPath: string | undefined = undefined;
+
+      // Check if it's a model from registry
+      if (creatureParam.startsWith('model-')) {
+        const kebab = creatureParam.slice('model-'.length);
+        const fromRegistry = MODEL_REGISTRY.find(m =>
+          m.creatureName && m.creatureName.toLowerCase().replace(/\s+/g, '-') === kebab
+        );
+        if (fromRegistry) {
+          resolvedName = fromRegistry.creatureName;
+          resolvedModelPath = fromRegistry.modelPath;
+          resolvedType = fromRegistry.category || 'fish';
+        }
+      } else {
+        // Check gallery creatures
+        const base = galleryCreatures.find(c => c.id === creatureParam);
+        if (base) {
+          resolvedName = base.name;
+          resolvedType = (base as any).category || 'fish';
+        }
+        // Check if there's a model attached
+        const attached = MODEL_REGISTRY.find(m => m.creatureId === creatureParam);
+        if (attached) {
+          resolvedModelPath = attached.modelPath;
+          if (!resolvedName && attached.creatureName) resolvedName = attached.creatureName;
+          if (attached.category) resolvedType = attached.category;
+        }
+      }
+
+      if (resolvedName && resolvedModelPath) {
+        const creature: SeaCreature = {
+          id: creatureParam,
+          name: resolvedName,
+          type: resolvedType,
+          modelPath: resolvedModelPath,
+          scale: 2,
+          position: [0, 0, -3],
+          description: `Testing ${resolvedName}`,
+          animation: 'idle'
+        };
+
+        setTestCreature(creature);
+        setActiveTest('3d-model');
+        updateTestResult('3d-model', 'running', 'Loading 3D model from URL...');
+
+        setTimeout(() => {
+          setModelLoaded(true);
+          updateTestResult('3d-model', 'success', `${resolvedName} loaded successfully!`);
+        }, 2000);
+      }
+    }
+  }, [creatureParam, isAuth]);
 
   // 3D Model Test
   const run3DModelTest = () => {
@@ -572,5 +636,20 @@ export default function TestWebXRPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TestWebXRPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="text-6xl mb-4 animate-pulse">⏳</div>
+          <h2 className="text-2xl font-bold">Loading Test Page...</h2>
+        </div>
+      </div>
+    }>
+      <TestWebXRContent />
+    </Suspense>
   );
 }

@@ -664,58 +664,60 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
       <header className="bg-black/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
+        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 via-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl">
-                <span className="text-2xl">🎛️</span>
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-cyan-400 via-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl">
+                <span className="text-xl sm:text-2xl">🎛️</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-                <p className="text-sm text-cyan-300">Manage AR Experience Settings</p>
+                <h1 className="text-lg sm:text-2xl font-bold text-white">Admin Dashboard</h1>
+                <p className="text-xs sm:text-sm text-cyan-300 hidden sm:block">Manage AR Experience Settings</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               <Link
                 href="/ar"
-                className="px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-semibold hover:from-cyan-500 hover:to-blue-500 transition-all shadow-lg hover:shadow-xl"
+                className="px-3 py-2 sm:px-5 sm:py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl text-xs sm:text-base font-semibold hover:from-cyan-500 hover:to-blue-500 transition-all shadow-lg hover:shadow-xl"
               >
-                AR View
+                <span className="hidden sm:inline">AR View</span>
+                <span className="sm:hidden">AR</span>
               </Link>
               <div className="relative group">
-                <button className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-500 hover:to-pink-500 transition-all shadow-lg hover:shadow-xl">
-                  🧪 Test Pages
+                <button className="px-3 py-2 sm:px-5 sm:py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl text-xs sm:text-base font-semibold hover:from-purple-500 hover:to-pink-500 transition-all shadow-lg hover:shadow-xl">
+                  <span className="hidden sm:inline">🧪 Test Pages</span>
+                  <span className="sm:hidden">🧪</span>
                 </button>
-                <div className="absolute right-0 mt-2 w-64 bg-slate-800 rounded-xl shadow-2xl border border-slate-600 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                <div className="absolute right-0 mt-2 w-56 sm:w-64 bg-slate-800 rounded-xl shadow-2xl border border-slate-600 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                   <div className="p-2 space-y-1">
                     <Link
                       href="/ar/test-newscene?creature=zebrasoma-xanthurum"
-                      className="flex items-center space-x-3 px-4 py-3 text-white hover:bg-slate-700 rounded-lg transition-all"
+                      className="flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 text-white hover:bg-slate-700 rounded-lg transition-all"
                     >
-                      <span className="text-2xl">🐠</span>
+                      <span className="text-xl sm:text-2xl">🐠</span>
                       <div>
-                        <div className="font-semibold text-sm">Depth Sensing</div>
-                        <div className="text-xs text-slate-400">Test with Zebrasoma</div>
+                        <div className="font-semibold text-xs sm:text-sm">Depth Sensing</div>
+                        <div className="text-[10px] sm:text-xs text-slate-400">Test with Zebrasoma</div>
                       </div>
                     </Link>
                     <Link
                       href="/test-model?creature=zebrasoma-xanthurum"
-                      className="flex items-center space-x-3 px-4 py-3 text-white hover:bg-slate-700 rounded-lg transition-all"
+                      className="flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 text-white hover:bg-slate-700 rounded-lg transition-all"
                     >
-                      <span className="text-2xl">🎭</span>
+                      <span className="text-xl sm:text-2xl">🎭</span>
                       <div>
-                        <div className="font-semibold text-sm">Model Test</div>
-                        <div className="text-xs text-slate-400">Test with Zebrasoma</div>
+                        <div className="font-semibold text-xs sm:text-sm">Model Test</div>
+                        <div className="text-[10px] sm:text-xs text-slate-400">Test with Zebrasoma</div>
                       </div>
                     </Link>
                     <Link
                       href="/test-webxr?creature=zebrasoma-xanthurum"
-                      className="flex items-center space-x-3 px-4 py-3 text-white hover:bg-slate-700 rounded-lg transition-all"
+                      className="flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 text-white hover:bg-slate-700 rounded-lg transition-all"
                     >
-                      <span className="text-2xl">🥽</span>
+                      <span className="text-xl sm:text-2xl">🥽</span>
                       <div>
-                        <div className="font-semibold text-sm">WebXR Test</div>
-                        <div className="text-xs text-slate-400">Test with Zebrasoma</div>
+                        <div className="font-semibold text-xs sm:text-sm">WebXR Test</div>
+                        <div className="text-[10px] sm:text-xs text-slate-400">Test with Zebrasoma</div>
                       </div>
                     </Link>
                   </div>
@@ -723,9 +725,10 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={handleLogout}
-                className="px-5 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-500 transition-all"
+                className="px-3 py-2 sm:px-5 sm:py-2.5 bg-red-600 text-white rounded-xl text-xs sm:text-base font-semibold hover:bg-red-500 transition-all"
               >
-                Logout
+                <span className="hidden sm:inline">Logout</span>
+                <span className="sm:hidden">Exit</span>
               </button>
             </div>
           </div>
@@ -733,39 +736,42 @@ export default function DashboardPage() {
       </header>
 
       {/* Tab Navigation */}
-      <div className="container mx-auto px-6 py-6">
-        <div className="flex space-x-4 mb-6">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="flex flex-wrap gap-2 sm:gap-4 mb-4 sm:mb-6">
           <button
             onClick={() => setActiveTab('models')}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+            className={`flex-1 min-w-[100px] px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-base font-semibold transition-all ${
               activeTab === 'models'
                 ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg'
                 : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'
             }`}
           >
-            🐟 3D Models & Sizes
+            <span className="hidden sm:inline">🐟 3D Models & Sizes</span>
+            <span className="sm:hidden">🐟 Models</span>
           </button>
           <button
             onClick={() => setActiveTab('settings')}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+            className={`flex-1 min-w-[100px] px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-base font-semibold transition-all ${
               activeTab === 'settings'
                 ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg'
                 : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'
             }`}
           >
-            ⚙️ App Settings
+            <span className="hidden sm:inline">⚙️ App Settings</span>
+            <span className="sm:hidden">⚙️ Settings</span>
           </button>
           <button
             onClick={() => setActiveTab('approval')}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all relative ${
+            className={`flex-1 min-w-[100px] px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-base font-semibold transition-all relative ${
               activeTab === 'approval'
                 ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg'
                 : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'
             }`}
           >
-            ✅ Pending Approvals
+            <span className="hidden sm:inline">✅ Pending Approvals</span>
+            <span className="sm:hidden">✅ Pending</span>
             {pendingModels.length > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full">
                 {pendingModels.length}
               </span>
             )}
@@ -774,7 +780,7 @@ export default function DashboardPage() {
 
         {/* Models Tab */}
         {activeTab === 'models' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
             {/* Model List - Left Sidebar */}
             <div className="lg:col-span-1">
               <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl">
@@ -1135,7 +1141,7 @@ export default function DashboardPage() {
 
         {/* Settings Tab */}
         {activeTab === 'settings' && (
-          <div className="max-w-4xl mx-auto space-y-6">
+          <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
             {/* Speech Bubble Settings */}
             <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl">
               <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
