@@ -1165,8 +1165,8 @@ function TestNewSceneContent() {
                 <span className="hidden sm:inline">WebXR:</span>
                 <span className="sm:hidden">XR:</span>
               </span>
-              <span className={`text-xs sm:text-sm font-bold ${activeModes.has('webxr') && detectionCounts.webxr > 0 ? 'text-cyan-400' : 'text-slate-500'}`}>
-                {activeModes.has('webxr') && detectionCounts.webxr > 0 ? `on(${detectionCounts.webxr})` : 'Off'}
+              <span className={`text-xs sm:text-sm font-bold ${detectedSurfaces > 0 ? 'text-cyan-400' : 'text-slate-500'}`}>
+                {detectedSurfaces > 0 ? 'on(1)' : 'Off'}
               </span>
             </div>
             {detectedSurfaces > 0 && (
@@ -1187,8 +1187,8 @@ function TestNewSceneContent() {
                 <span className="hidden sm:inline">TF:</span>
                 <span className="sm:hidden">TF:</span>
               </span>
-              <span className={`text-xs sm:text-sm font-bold ${activeModes.has('tensorflow') && detectionCounts.faces > 0 ? 'text-purple-400' : 'text-slate-500'}`}>
-                {activeModes.has('tensorflow') && detectionCounts.faces > 0 ? `on(${detectionCounts.faces})` : 'Off'}
+              <span className={`text-xs sm:text-sm font-bold ${detectionCounts.faces > 0 ? 'text-purple-400' : 'text-slate-500'}`}>
+                {detectionCounts.faces > 0 ? 'on(1)' : 'Off'}
               </span>
             </div>
           </div>
