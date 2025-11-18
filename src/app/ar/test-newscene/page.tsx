@@ -456,9 +456,8 @@ function TestNewSceneContent() {
       console.error('❌ TensorFlow failed:', error);
     }
 
-    // Try WebXR if supported
-    if (deviceCapabilities?.webxr.supported !== false) {
-      try {
+    // Try WebXR (always attempt on all devices)
+    try {
         console.log('📡 Starting WebXR...');
         setWebxrStatus('Initializing...');
 
@@ -552,7 +551,6 @@ function TestNewSceneContent() {
         console.error('❌ WebXR failed:', error);
         setWebxrStatus('Failed');
       }
-    }
 
     if (successfulModes.size > 0) {
       setActiveModes(successfulModes);
@@ -1032,11 +1030,11 @@ function TestNewSceneContent() {
                 handleDepthModeChange('webxr');
               }}
               onTouchStart={(e) => e.stopPropagation()}
-              disabled={deviceCapabilities?.webxr.supported === false || isRunningAll}
+              disabled={isRunningAll}
               className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                 (depthSensingMode === 'webxr' || activeModes.has('webxr'))
                   ? 'bg-cyan-500 text-white shadow-lg'
-                  : deviceCapabilities?.webxr.supported === false || isRunningAll
+                  : isRunningAll
                   ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed opacity-50'
                   : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
               }`}
@@ -1050,7 +1048,7 @@ function TestNewSceneContent() {
                   )}
                 </div>
                 <span className="text-[10px] text-slate-500 mt-1">
-                  {deviceCapabilities?.webxr.supported === false ? 'Not available on mobile Chrome' : 'Quest 3 / ARCore only'}
+                  Quest 3 / Samsung ARCore
                 </span>
               </div>
             </button>
