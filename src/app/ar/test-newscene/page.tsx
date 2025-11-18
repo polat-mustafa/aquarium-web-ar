@@ -22,8 +22,6 @@ import { EnvironmentScanAnimation } from '@/components/ar/EnvironmentScanAnimati
 import { getUserFriendlyError, checkAllCapabilities, type DeviceCapabilities } from '@/utils/featureDetection';
 import { Professional3DScanInterface } from '@/components/ar/Professional3DScanInterface';
 import { ScreenshotCaptureEffect } from '@/components/ar/ScreenshotCaptureEffect';
-import { FullBodyTrackingVisualizer } from '@/components/ar/FullBodyTrackingVisualizer';
-import type { TrackingMode as BodyTrackingMode } from '@/utils/fullBodyTracking';
 
 function TestNewSceneContent() {
   // CRITICAL FIX: Extract creature ID once with useMemo to prevent infinite re-renders
@@ -62,11 +60,6 @@ function TestNewSceneContent() {
   const [showQuickTip, setShowQuickTip] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deviceCapabilities, setDeviceCapabilities] = useState<DeviceCapabilities | null>(null);
-
-  // FULL BODY TRACKING STATES
-  const [enableFullBodyTracking, setEnableFullBodyTracking] = useState(false);
-  const [bodyTrackingMode, setBodyTrackingMode] = useState<BodyTrackingMode>('all');
-  const [showTrackingLabels, setShowTrackingLabels] = useState(true);
 
   // FEEDING STATES
   const [isFeedingAnimation, setIsFeedingAnimation] = useState(false);
@@ -158,7 +151,7 @@ function TestNewSceneContent() {
     }
   }, []);
 
-  // Animate scan progress
+  // Animate scan progress - faster
   useEffect(() => {
     if (!showEnvironmentScan || environmentScanComplete) return;
 
@@ -168,9 +161,9 @@ function TestNewSceneContent() {
           setEnvironmentScanComplete(true);
           return 100;
         }
-        return prev + 2;
+        return prev + 10; // Faster loading
       });
-    }, 100);
+    }, 50); // Faster interval
 
     return () => clearInterval(interval);
   }, [showEnvironmentScan, environmentScanComplete]);
@@ -660,26 +653,23 @@ function TestNewSceneContent() {
 
       {/* Simple Loading Screen */}
       {showEnvironmentScan && !environmentScanComplete && (
-        <div className="fixed inset-0 z-50 bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center">
           <div className="text-center">
             {/* Simple Loading Icon */}
-            <div className="relative inline-block mb-6">
-              <div className="w-24 h-24 border-8 border-cyan-200/20 border-t-cyan-500 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-3xl">🌊</span>
-              </div>
+            <div className="relative inline-block mb-4">
+              <div className="w-16 h-16 border-4 border-cyan-200/20 border-t-cyan-500 rounded-full animate-spin"></div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="w-64 mx-auto">
-              <div className="h-2 bg-slate-700 rounded-full overflow-hidden mb-3">
+            {/* Progress */}
+            <div className="w-48 mx-auto">
+              <div className="h-1 bg-slate-700 rounded-full overflow-hidden mb-2">
                 <div
-                  className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-300 ease-out"
+                  className="h-full bg-cyan-500 transition-all duration-100"
                   style={{ width: `${scanProgress}%` }}
                 />
               </div>
-              <p className="text-cyan-300 text-sm font-semibold">
-                Loading... {scanProgress}%
+              <p className="text-cyan-300 text-xs">
+                {scanProgress}%
               </p>
             </div>
           </div>
@@ -837,69 +827,7 @@ function TestNewSceneContent() {
                 )}
               </div>
             </button>
-
-            <div className="border-t border-slate-600 my-2"></div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setEnableFullBodyTracking(!enableFullBodyTracking);
-              }}
-              onTouchStart={(e) => e.stopPropagation()}
-              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                enableFullBodyTracking
-                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
-                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
-              }`}
-              style={{ WebkitTapHighlightColor: 'transparent' }}
-            >
-              <div className="flex items-center justify-between">
-                <span>🎯 Full Body Tracking</span>
-                {enableFullBodyTracking && (
-                  <span className="text-xs bg-orange-600 px-2 py-0.5 rounded">Active</span>
-                )}
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">Face + Hands + Pose</div>
-            </button>
           </div>
-
-          {enableFullBodyTracking && (
-            <div className="mt-3 pt-3 border-t border-slate-600 space-y-2">
-              <label className="text-xs text-slate-300 font-semibold block mb-2">Tracking Mode</label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['all', 'face', 'hands', 'pose'] as BodyTrackingMode[]).map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setBodyTrackingMode(mode);
-                    }}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      bodyTrackingMode === mode
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
-                    }`}
-                    style={{ WebkitTapHighlightColor: 'transparent' }}
-                  >
-                    {mode === 'all' && '🎯 All'}
-                    {mode === 'face' && '👤 Face'}
-                    {mode === 'hands' && '✋ Hands'}
-                    {mode === 'pose' && '🧍 Pose'}
-                  </button>
-                ))}
-              </div>
-              <label className="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer mt-2">
-                <input
-                  type="checkbox"
-                  checked={showTrackingLabels}
-                  onChange={(e) => setShowTrackingLabels(e.target.checked)}
-                  className="rounded w-4 h-4"
-                />
-                <span>Show Joint Labels</span>
-              </label>
-            </div>
-          )}
 
           {depthSensingMode !== 'none' && (
             <div className="mt-3 pt-3 border-t border-slate-600 space-y-2">
@@ -957,20 +885,8 @@ function TestNewSceneContent() {
         />
       )}
 
-      {/* Full Body Tracking Visualizer */}
-      {enableFullBodyTracking && videoRef.current && (
-        <div className="fixed inset-0 z-45 pointer-events-none">
-          <FullBodyTrackingVisualizer
-            videoElement={videoRef.current}
-            mode={bodyTrackingMode}
-            showLabels={showTrackingLabels}
-            showConnections={true}
-          />
-        </div>
-      )}
-
       {/* Obstacle Zone Visualization */}
-      {showDepthVisualization && obstacleZones.length > 0 && !enableFullBodyTracking && (
+      {showDepthVisualization && obstacleZones.length > 0 && (
         <div className="fixed inset-0 z-25 pointer-events-none">
           {obstacleZones.map((zone) => {
             const getZoneColor = () => {
