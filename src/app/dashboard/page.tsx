@@ -682,12 +682,45 @@ export default function DashboardPage() {
               >
                 AR View
               </Link>
-              <Link
-                href="/test-webxr"
-                className="px-5 py-2.5 bg-slate-700 text-white rounded-xl font-semibold hover:bg-slate-600 transition-all"
-              >
-                Test Page
-              </Link>
+              <div className="relative group">
+                <button className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-500 hover:to-pink-500 transition-all shadow-lg hover:shadow-xl">
+                  🧪 Test Pages
+                </button>
+                <div className="absolute right-0 mt-2 w-64 bg-slate-800 rounded-xl shadow-2xl border border-slate-600 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <div className="p-2 space-y-1">
+                    <Link
+                      href="/ar/test-newscene?creature=zebrasoma-xanthurum"
+                      className="flex items-center space-x-3 px-4 py-3 text-white hover:bg-slate-700 rounded-lg transition-all"
+                    >
+                      <span className="text-2xl">🐠</span>
+                      <div>
+                        <div className="font-semibold text-sm">Depth Sensing</div>
+                        <div className="text-xs text-slate-400">Test with Zebrasoma</div>
+                      </div>
+                    </Link>
+                    <Link
+                      href="/test-model?creature=zebrasoma-xanthurum"
+                      className="flex items-center space-x-3 px-4 py-3 text-white hover:bg-slate-700 rounded-lg transition-all"
+                    >
+                      <span className="text-2xl">🎭</span>
+                      <div>
+                        <div className="font-semibold text-sm">Model Test</div>
+                        <div className="text-xs text-slate-400">Test with Zebrasoma</div>
+                      </div>
+                    </Link>
+                    <Link
+                      href="/test-webxr?creature=zebrasoma-xanthurum"
+                      className="flex items-center space-x-3 px-4 py-3 text-white hover:bg-slate-700 rounded-lg transition-all"
+                    >
+                      <span className="text-2xl">🥽</span>
+                      <div>
+                        <div className="font-semibold text-sm">WebXR Test</div>
+                        <div className="text-xs text-slate-400">Test with Zebrasoma</div>
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+              </div>
               <button
                 onClick={handleLogout}
                 className="px-5 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-500 transition-all"
