@@ -49,11 +49,11 @@ function TestNewSceneContent() {
   const [showZoomIndicator, setShowZoomIndicator] = useState(false);
   const zoomIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // DEPTH SENSING STATES
+  // DEPTH SENSING STATES - All disabled by default for performance
   const [depthSensingMode, setDepthSensingMode] = useState<DepthSensingMode>('none');
   const [obstacleZones, setObstacleZones] = useState<ObstacleZone[]>([]);
-  const [showDepthVisualization, setShowDepthVisualization] = useState(true);
-  const [showScanningAnimation, setShowScanningAnimation] = useState(true);
+  const [showDepthVisualization, setShowDepthVisualization] = useState(false);
+  const [showScanningAnimation, setShowScanningAnimation] = useState(false);
   const [depthSensorReady, setDepthSensorReady] = useState(false);
   const depthManagerRef = useRef<DepthSensingManager>(new DepthSensingManager());
   const [showControlPanel, setShowControlPanel] = useState(false);
@@ -692,9 +692,9 @@ function TestNewSceneContent() {
       <div className="fixed top-20 right-4 z-50 flex flex-col items-end space-y-2 pointer-events-auto">
         {/* Quick tip tooltip */}
         {showQuickTip && !showControlPanel && (
-          <div className="mr-16 bg-gradient-to-r from-orange-500/95 to-red-500/95 backdrop-blur-md px-4 py-2 rounded-lg shadow-2xl border border-yellow-300/30 animate-slideDown">
+          <div className="mr-16 bg-gradient-to-r from-blue-500/95 to-cyan-500/95 backdrop-blur-md px-4 py-2 rounded-lg shadow-2xl border border-blue-300/30 animate-slideDown">
             <p className="text-white text-xs font-medium whitespace-nowrap">
-              👈 Tap to enable depth sensing
+              👈 Optional: Enable tracking
             </p>
           </div>
         )}
@@ -734,10 +734,10 @@ function TestNewSceneContent() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-cyan-300 font-bold text-xs sm:text-sm flex items-center">
               <span className="mr-2">🎯</span>
-              Depth Sensing
+              Tracking (Optional)
             </h3>
-            <span className="text-xs text-slate-400">
-              {obstacleZones.length} detected
+            <span className="text-xs text-yellow-400">
+              May slow device
             </span>
           </div>
 
@@ -771,11 +771,14 @@ function TestNewSceneContent() {
               }`}
               style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              <div className="flex items-center justify-between">
-                <span>✋ MediaPipe Hands</span>
-                {depthSensingMode === 'mediapipe' && depthSensorReady && (
-                  <span className="text-xs bg-green-600 px-2 py-0.5 rounded">Active</span>
-                )}
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between">
+                  <span>✋ MediaPipe Hands</span>
+                  {depthSensingMode === 'mediapipe' && depthSensorReady && (
+                    <span className="text-xs bg-green-600 px-2 py-0.5 rounded">Active</span>
+                  )}
+                </div>
+                <span className="text-[10px] text-yellow-500 mt-1">⚠ Can be slow</span>
               </div>
             </button>
 
@@ -785,11 +788,12 @@ function TestNewSceneContent() {
                 handleDepthModeChange('webxr');
               }}
               onTouchStart={(e) => e.stopPropagation()}
+              disabled={deviceCapabilities?.webxr.supported === false}
               className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                 depthSensingMode === 'webxr'
                   ? 'bg-cyan-500 text-white shadow-lg'
                   : deviceCapabilities?.webxr.supported === false
-                  ? 'bg-slate-800/50 text-slate-400'
+                  ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed opacity-50'
                   : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
               }`}
               style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -801,9 +805,9 @@ function TestNewSceneContent() {
                     <span className="text-xs bg-cyan-600 px-2 py-0.5 rounded">Active</span>
                   )}
                 </div>
-                {deviceCapabilities?.webxr.supported === false && (
-                  <span className="text-[10px] text-slate-500 mt-1">Quest 3 or ARCore required</span>
-                )}
+                <span className="text-[10px] text-slate-500 mt-1">
+                  {deviceCapabilities?.webxr.supported === false ? 'Not available on mobile Chrome' : 'Quest 3 / ARCore only'}
+                </span>
               </div>
             </button>
 
@@ -820,11 +824,14 @@ function TestNewSceneContent() {
               }`}
               style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              <div className="flex items-center justify-between">
-                <span>🧠 TensorFlow.js</span>
-                {depthSensingMode === 'tensorflow' && depthSensorReady && (
-                  <span className="text-xs bg-purple-600 px-2 py-0.5 rounded">Active</span>
-                )}
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between">
+                  <span>🧠 TensorFlow.js</span>
+                  {depthSensingMode === 'tensorflow' && depthSensorReady && (
+                    <span className="text-xs bg-purple-600 px-2 py-0.5 rounded">Active</span>
+                  )}
+                </div>
+                <span className="text-[10px] text-yellow-500 mt-1">⚠ Can be slow</span>
               </div>
             </button>
           </div>
