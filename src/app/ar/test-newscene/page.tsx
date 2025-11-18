@@ -53,7 +53,7 @@ function TestNewSceneContent() {
   const [activeModes, setActiveModes] = useState<Set<DepthSensingMode>>(new Set(['none']));
   const [depthSensingMode, setDepthSensingMode] = useState<DepthSensingMode>('none'); // Legacy for single mode
   const [obstacleZones, setObstacleZones] = useState<ObstacleZone[]>([]);
-  const [showDepthVisualization, setShowDepthVisualization] = useState(false);
+  const [showDepthVisualization, setShowDepthVisualization] = useState(false); // Disabled by default - no visual boxes
   const [showScanningAnimation, setShowScanningAnimation] = useState(false);
   const [depthSensorReady, setDepthSensorReady] = useState(false);
   const depthManagerRef = useRef<DepthSensingManager>(new DepthSensingManager());
@@ -301,6 +301,27 @@ function TestNewSceneContent() {
           // Trigger environment scan animation on camera ready
           setShowEnvironmentScan(true);
 
+          // ⭐ AUTO-START: Automatically start environment detection
+          console.log('🎯 Auto-starting environment detection...');
+          setTimeout(async () => {
+            try {
+              await depthManagerRef.current.setMode(
+                'mediapipe',
+                videoRef.current!,
+                (zones: ObstacleZone[]) => {
+                  setObstacleZones(zones);
+                  const handCount = zones.filter(z => z.type === 'hand').length;
+                  setDetectionCounts(prev => ({ ...prev, hands: handCount }));
+                }
+              );
+              setDepthSensingMode('mediapipe');
+              setDepthSensorReady(true);
+              console.log('✅ Environment detection started automatically');
+            } catch (err) {
+              console.error('❌ Auto-start failed:', err);
+            }
+          }, 2000); // Wait 2 seconds for camera to stabilize
+
           stopQRDetection = initializeQRDetection(
             videoRef.current,
             handleQRDetection
@@ -457,7 +478,8 @@ function TestNewSceneContent() {
     console.log('🚀 Starting ALL tracking modes simultaneously...');
     setIsRunningAll(true);
     setErrorMessage(null);
-    setShowDepthVisualization(true);
+    // Don't show visualization boxes - they block the screen
+    // setShowDepthVisualization(true);
     setShowScanningAnimation(true);
 
     if (!videoRef.current || !isCameraReady) {
