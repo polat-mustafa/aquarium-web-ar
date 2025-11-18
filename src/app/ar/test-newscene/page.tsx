@@ -99,6 +99,12 @@ function TestNewSceneContent() {
   const [placementMode, setPlacementMode] = useState(false);
   const [canPlace, setCanPlace] = useState(false);
 
+  // ANIMATION TEST CONTROLS
+  const [showAnimationTests, setShowAnimationTests] = useState(false);
+  const [triggerHideBehind, setTriggerHideBehind] = useState(0);
+  const [triggerExplore, setTriggerExplore] = useState(0);
+  const [triggerDance, setTriggerDance] = useState(0);
+
   // FEEDING STATES
   const [isFeedingAnimation, setIsFeedingAnimation] = useState(false);
   const [feedPosition, setFeedPosition] = useState<[number, number] | null>(null);
@@ -1647,6 +1653,9 @@ function TestNewSceneContent() {
           triggerFeedReturn={triggerFeedReturn}
           surfacePosition={surfacePoses.length > 0 ? surfacePoses[0].position : undefined}
           placedOrganisms={placedOrganisms}
+          detectedObjects={detectedObjects}
+          triggerHideBehind={triggerHideBehind}
+          triggerExplore={triggerExplore}
         />
 
         {/* Bubble effects */}
@@ -1723,8 +1732,110 @@ function TestNewSceneContent() {
           </div>
         )}
 
+        {/* Animation Test Panel */}
+        {showAnimationTests && activeCreature && detectedObjects.length > 0 && (
+          <div className="fixed bottom-24 left-4 z-50 bg-black/95 backdrop-blur-xl rounded-2xl p-4 border border-purple-500/50 max-w-xs pointer-events-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-purple-300 font-bold text-sm flex items-center">
+                <span className="mr-2">🧪</span>
+                Animation Tests
+              </h3>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAnimationTests(false);
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="text-slate-400 hover:text-white"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {/* Hide Behind Object */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTriggerHideBehind(prev => prev + 1);
+                  console.log('🧪 TEST: Triggering hide behind object');
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="w-full px-4 py-2 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white rounded-lg font-medium text-sm transition-all shadow-lg"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                😱 Hide Behind Object
+              </button>
+
+              {/* Explore Behind */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTriggerExplore(prev => prev + 1);
+                  console.log('🧪 TEST: Triggering explore behind');
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg font-medium text-sm transition-all shadow-lg"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                🔍 Explore Behind
+              </button>
+
+              {/* Dance Animation */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTriggerDance(prev => prev + 1);
+                  triggerSpecialAnimation();
+                  console.log('🧪 TEST: Triggering dance');
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg font-medium text-sm transition-all shadow-lg"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                💃 Dance Animation
+              </button>
+
+              {/* Return to Center */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTriggerFeedReturn(prev => prev + 1);
+                  console.log('🧪 TEST: Return to center');
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg font-medium text-sm transition-all shadow-lg"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                🏠 Return to Center
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* AR Controls - Mobile Optimized */}
         <div className="absolute bottom-32 right-4 z-40 flex flex-col space-y-3 pointer-events-auto sm:bottom-36">
+          {/* Animation Test Toggle */}
+          {activeCreature && detectedObjects.length > 0 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAnimationTests(!showAnimationTests);
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl border-3 border-white/30 transition-all ${
+                showAnimationTests
+                  ? 'bg-gradient-to-br from-purple-500 to-pink-600 animate-pulse'
+                  : 'bg-gradient-to-br from-purple-600 to-indigo-700 hover:scale-110 active:scale-95'
+              }`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+              aria-label="Animation Tests"
+            >
+              <span className="text-2xl">🧪</span>
+            </button>
+          )}
+
           {/* Placement Mode Toggle - Pokemon GO Style */}
           {activeModes.has('webxr') && activeCreature && (
             <button

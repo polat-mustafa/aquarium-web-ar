@@ -17,6 +17,15 @@ interface CreatureModelProps {
   enableCollisionDetection?: boolean;
   triggerFeedReturn?: number;
   surfacePosition?: [number, number, number];
+  detectedObjects?: Array<{
+    id: string;
+    position: [number, number, number];
+    dimensions: { width: number; height: number; depth: number };
+    volume: number;
+    type: 'table' | 'floor' | 'wall' | 'object';
+  }>;
+  triggerHideBehind?: number;
+  triggerExplore?: number;
 }
 
 // Simple icon fallback for creatures without 3D models
@@ -69,6 +78,9 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
   enableCollisionDetection = false,
   triggerFeedReturn = 0,
   surfacePosition,
+  detectedObjects = [],
+  triggerHideBehind = 0,
+  triggerExplore = 0,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
@@ -84,6 +96,14 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
   const positionAnimationRef = useRef({ progress: 1, from: position, to: position });
   const [isAvoidingObstacle, setIsAvoidingObstacle] = useState(false);
   const lastObstacleCheckRef = useRef(0);
+
+  // HIDE BEHIND OBJECTS: New behavior states
+  const [isHiding, setIsHiding] = useState(false);
+  const [hidingBehindObject, setHidingBehindObject] = useState<string | null>(null);
+  const lastExploreTimeRef = useRef(0);
+  const exploreIntervalRef = useRef(Math.random() * 10000 + 5000); // Random 5-15 seconds
+  const pendingHideRef = useRef(0);
+  const pendingExploreRef = useRef(0);
 
   // Get zoom level and speech bubble settings from store
   const zoomLevel = useAppStore((state) => state.zoomLevel);
@@ -211,8 +231,27 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
 
       // Stop any avoidance animations
       setIsAvoidingObstacle(false);
+      setIsHiding(false);
     }
   }, [triggerFeedReturn, dynamicPosition]);
+
+  // TEST: Hide Behind Object trigger
+  useEffect(() => {
+    if (triggerHideBehind > 0 && detectedObjects.length > 0) {
+      console.log('🧪 TEST: Hide Behind triggered!');
+      pendingHideRef.current = triggerHideBehind;
+      setIsAvoidingObstacle(false);
+    }
+  }, [triggerHideBehind, detectedObjects]);
+
+  // TEST: Explore Behind trigger
+  useEffect(() => {
+    if (triggerExplore > 0 && detectedObjects.length > 0) {
+      console.log('🧪 TEST: Explore Behind triggered!');
+      pendingExploreRef.current = triggerExplore;
+      setIsAvoidingObstacle(false);
+    }
+  }, [triggerExplore, detectedObjects]);
 
   // Handle tap/click on creature
   const handleTap = useCallback(() => {
@@ -302,21 +341,141 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
     }, 2500); // Slower movement - 2.5 seconds
   }, [isAvoidingObstacle, setShowSpeechBubble, speechBubbleDuration]);
 
+  // HIDE BEHIND OBJECT: Find nearest object and hide behind it
+  const hideBehindObject = useCallback((currentPos: [number, number, number], camera: THREE.Camera, reason: 'threat' | 'explore') => {
+    if (detectedObjects.length === 0) return;
+    if (isHiding && reason === 'threat') return; // Already hiding from threat
+
+    const currentPosVec = new THREE.Vector3(currentPos[0], currentPos[1], currentPos[2]);
+    const currentDepth = Math.abs(currentPos[2]);
+
+    // Find nearest object that fish can hide behind
+    let bestObject = null;
+    let bestDistance = Infinity;
+
+    for (const obj of detectedObjects) {
+      const objDepth = Math.sqrt(
+        obj.position[0] * obj.position[0] +
+        obj.position[1] * obj.position[1] +
+        obj.position[2] * obj.position[2]
+      );
+
+      // Object must be closer to camera than fish (fish hides behind it)
+      if (objDepth < currentDepth + 0.5) {
+        const objPos = new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2]);
+        const distance = currentPosVec.distanceTo(objPos);
+
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestObject = obj;
+        }
+      }
+    }
+
+    if (bestObject) {
+      console.log(`🐟 ${reason === 'threat' ? 'HIDING' : 'EXPLORING'} behind ${bestObject.type}!`);
+
+      // Calculate position behind object (further away from camera)
+      const objDepth = Math.sqrt(
+        bestObject.position[0] * bestObject.position[0] +
+        bestObject.position[1] * bestObject.position[1] +
+        bestObject.position[2] * bestObject.position[2]
+      );
+
+      // Go behind object with some offset
+      const hideOffset = reason === 'threat' ? 1.5 : 0.8; // Hide deeper when threatened
+      const behindX = bestObject.position[0] + (Math.random() - 0.5) * bestObject.dimensions.width;
+      const behindY = bestObject.position[1] + bestObject.dimensions.height * 0.5;
+      const behindZ = Math.min(-objDepth - hideOffset, -1.5); // Go behind (more negative Z)
+
+      // Clamp to reasonable bounds
+      const newX = Math.max(-4, Math.min(4, behindX));
+      const newY = Math.max(-2, Math.min(2, behindY));
+      const newZ = Math.max(-8, Math.min(-1.5, behindZ));
+
+      // Start hiding animation
+      positionAnimationRef.current = {
+        progress: 0,
+        from: currentPos,
+        to: [newX, newY, newZ]
+      };
+
+      setIsHiding(true);
+      setHidingBehindObject(bestObject.id);
+
+      // Show speech bubble
+      setShowSpeechBubble(true);
+      setTimeout(() => setShowSpeechBubble(false), speechBubbleDuration);
+
+      // Reset hiding state after animation
+      const hideDuration = reason === 'threat' ? 4000 : 3000;
+      setTimeout(() => {
+        setIsHiding(false);
+        setHidingBehindObject(null);
+
+        // Return to normal position after hiding
+        if (reason === 'threat') {
+          const returnPos: [number, number, number] = [
+            (Math.random() - 0.5) * 3,
+            (Math.random() - 0.5) * 2,
+            -3
+          ];
+          positionAnimationRef.current = {
+            progress: 0,
+            from: [newX, newY, newZ],
+            to: returnPos
+          };
+        }
+      }, hideDuration);
+    }
+  }, [detectedObjects, isHiding, setShowSpeechBubble, speechBubbleDuration]);
+
   // Update every frame
   useFrame((state, delta) => {
     if (!groupRef.current) return;
 
     const time = state.clock.elapsedTime;
 
-    // COLLISION DETECTION: Check for obstacles every 50ms (more responsive)
+    // TEST TRIGGERS: Handle test button triggers
+    if (pendingHideRef.current > 0) {
+      console.log('🧪 Executing hide behind test...');
+      hideBehindObject(dynamicPosition, state.camera, 'threat');
+      pendingHideRef.current = 0;
+    }
+    if (pendingExploreRef.current > 0) {
+      console.log('🧪 Executing explore behind test...');
+      hideBehindObject(dynamicPosition, state.camera, 'explore');
+      pendingExploreRef.current = 0;
+    }
+
+    // COLLISION DETECTION & HIDING: Check for obstacles every 50ms (more responsive)
     if (enableCollisionDetection && obstacleZones && obstacleZones.length > 0 && time - lastObstacleCheckRef.current > 0.05) {
       lastObstacleCheckRef.current = time;
 
       const currentPosVec = new THREE.Vector3(dynamicPosition[0], dynamicPosition[1], dynamicPosition[2]);
       const collision = checkCollision(currentPosVec, state.camera, obstacleZones, 0.15); // LARGER threshold for earlier detection
 
-      if (collision && !isAvoidingObstacle) {
-        avoidObstacle(collision, dynamicPosition, state.camera);
+      if (collision && !isAvoidingObstacle && !isHiding) {
+        // HIDE BEHIND OBJECT when hand/face detected (threat response)
+        if (detectedObjects.length > 0 && (collision.type === 'hand' || collision.type === 'person')) {
+          console.log(`⚠️ THREAT DETECTED: ${collision.type.toUpperCase()}! Hiding behind object...`);
+          hideBehindObject(dynamicPosition, state.camera, 'threat');
+        } else {
+          // Normal avoidance if no objects to hide behind
+          avoidObstacle(collision, dynamicPosition, state.camera);
+        }
+      }
+    }
+
+    // RANDOM EXPLORATION: Occasionally swim behind objects during normal play
+    if (!isHiding && !isAvoidingObstacle && detectedObjects.length > 0 && time - lastExploreTimeRef.current > exploreIntervalRef.current / 1000) {
+      lastExploreTimeRef.current = time;
+      exploreIntervalRef.current = Math.random() * 15000 + 8000; // Random 8-23 seconds
+
+      // 30% chance to explore behind object
+      if (Math.random() < 0.3) {
+        console.log('🐟 Exploring behind object...');
+        hideBehindObject(dynamicPosition, state.camera, 'explore');
       }
     }
 

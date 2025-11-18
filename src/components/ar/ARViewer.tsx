@@ -29,6 +29,15 @@ interface ARViewerProps {
     position: [number, number, number];
     creature: any;
   }>;
+  detectedObjects?: Array<{
+    id: string;
+    position: [number, number, number];
+    dimensions: { width: number; height: number; depth: number };
+    volume: number;
+    type: 'table' | 'floor' | 'wall' | 'object';
+  }>;
+  triggerHideBehind?: number;
+  triggerExplore?: number;
 }
 
 // Static camera settings (never change)
@@ -61,7 +70,10 @@ const ARViewer: React.FC<ARViewerProps> = memo(({
   enableCollisionDetection = false,
   triggerFeedReturn = 0,
   surfacePosition,
-  placedOrganisms = []
+  placedOrganisms = [],
+  detectedObjects = [],
+  triggerHideBehind = 0,
+  triggerExplore = 0
 }) => {
   // CRITICAL: Only select activeCreature, not currentAnimation to prevent unnecessary re-renders
   // Animation state changes should NOT cause Canvas to re-render
@@ -128,6 +140,9 @@ const ARViewer: React.FC<ARViewerProps> = memo(({
               enableCollisionDetection={enableCollisionDetection}
               triggerFeedReturn={triggerFeedReturn}
               surfacePosition={surfacePosition}
+              detectedObjects={detectedObjects}
+              triggerHideBehind={triggerHideBehind}
+              triggerExplore={triggerExplore}
             />
           ) : (
             // Keep a placeholder to maintain scene structure
@@ -144,6 +159,7 @@ const ARViewer: React.FC<ARViewerProps> = memo(({
               obstacleZones={[]}
               enableCollisionDetection={false}
               triggerFeedReturn={0}
+              detectedObjects={detectedObjects}
             />
           ))}
         </ARScene>
