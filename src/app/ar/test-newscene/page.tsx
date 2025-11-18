@@ -57,6 +57,7 @@ function TestNewSceneContent() {
   const [showScanningAnimation, setShowScanningAnimation] = useState(false);
   const [depthSensorReady, setDepthSensorReady] = useState(false);
   const depthManagerRef = useRef<DepthSensingManager>(new DepthSensingManager());
+  const tensorflowSensorRef = useRef<any>(null);
   const [showControlPanel, setShowControlPanel] = useState(false);
   const [showQuickTip, setShowQuickTip] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -425,10 +426,9 @@ function TestNewSceneContent() {
         videoRef.current,
         (zones: ObstacleZone[]) => {
           setObstacleZones(zones);
-          // Count detections
+          // Count hand detections (faces are handled by TensorFlow)
           const handCount = zones.filter(z => z.type === 'hand').length;
-          const faceCount = zones.filter(z => z.type === 'person').length;
-          setDetectionCounts(prev => ({ ...prev, hands: handCount, faces: faceCount }));
+          setDetectionCounts(prev => ({ ...prev, hands: handCount }));
         }
       );
       successfulModes.add('mediapipe');
@@ -437,13 +437,21 @@ function TestNewSceneContent() {
       console.error('❌ MediaPipe failed:', error);
     }
 
-    // Try TensorFlow
+    // Try TensorFlow (face detection)
     try {
       console.log('📡 Starting TensorFlow...');
-      // Note: TensorFlow will override MediaPipe in current implementation
-      // This is a limitation - need separate managers for true simultaneous operation
+      const { TensorFlowDepthSensor } = await import('@/utils/depthSensing');
+      const tfSensor = new TensorFlowDepthSensor();
+
+      await tfSensor.initialize(videoRef.current, (zones) => {
+        // Update face count from TensorFlow
+        const faceCount = zones.filter(z => z.type === 'person').length;
+        setDetectionCounts(prev => ({ ...prev, faces: faceCount }));
+      });
+
+      tensorflowSensorRef.current = tfSensor;
       successfulModes.add('tensorflow');
-      console.log('⚠️ TensorFlow added (may conflict with MediaPipe)');
+      console.log('✅ TensorFlow started (face detection)');
     } catch (error: any) {
       console.error('❌ TensorFlow failed:', error);
     }
@@ -466,7 +474,7 @@ function TestNewSceneContent() {
             console.log('✅ WebXR session created!');
             setWebxrStatus('Active');
             successfulModes.add('webxr');
-            setDetectionCounts(prev => ({ ...prev, webxr: 1 }));
+            // Detection count will be updated in frame loop when surfaces are detected
 
             // Set up hit test source for surface detection
             const referenceSpace = await session.requestReferenceSpace('viewer');
@@ -491,6 +499,9 @@ function TestNewSceneContent() {
                     setDetectedSurfaces(hitTestResults.length);
                     setWebxrStatus(`${hitTestResults.length} surfaces`);
 
+                    // Update WebXR detection count
+                    setDetectionCounts(prev => ({ ...prev, webxr: 1 }));
+
                     // Extract surface poses for visualization
                     const poses: Array<{ position: [number, number, number]; size: [number, number] }> = [];
 
@@ -513,6 +524,7 @@ function TestNewSceneContent() {
                   } else {
                     setDetectedSurfaces(0);
                     setSurfacePoses([]);
+                    setDetectionCounts(prev => ({ ...prev, webxr: 0 }));
                   }
                 }
               } catch (err) {
@@ -558,6 +570,13 @@ function TestNewSceneContent() {
   const handleStopAll = useCallback(() => {
     console.log('⏹️ Stopping all tracking modes...');
     depthManagerRef.current.stop();
+
+    // Stop TensorFlow sensor if running
+    if (tensorflowSensorRef.current) {
+      tensorflowSensorRef.current.stop();
+      tensorflowSensorRef.current = null;
+    }
+
     setIsRunningAll(false);
     setActiveModes(new Set(['none']));
     setDepthSensingMode('none');
@@ -570,6 +589,9 @@ function TestNewSceneContent() {
   useEffect(() => {
     return () => {
       depthManagerRef.current.stop();
+      if (tensorflowSensorRef.current) {
+        tensorflowSensorRef.current.stop();
+      }
     };
   }, []);
 
@@ -1143,8 +1165,8 @@ function TestNewSceneContent() {
                 <span className="hidden sm:inline">WebXR:</span>
                 <span className="sm:hidden">XR:</span>
               </span>
-              <span className={`text-[9px] sm:text-xs font-bold ${activeModes.has('webxr') && webxrStatus === 'Active' ? 'text-cyan-400' : webxrStatus.includes('Error') ? 'text-red-400' : 'text-slate-500'}`}>
-                {webxrStatus}
+              <span className={`text-xs sm:text-sm font-bold ${activeModes.has('webxr') && detectionCounts.webxr > 0 ? 'text-cyan-400' : 'text-slate-500'}`}>
+                {activeModes.has('webxr') && detectionCounts.webxr > 0 ? `on(${detectionCounts.webxr})` : 'Off'}
               </span>
             </div>
             {detectedSurfaces > 0 && (
@@ -1165,8 +1187,8 @@ function TestNewSceneContent() {
                 <span className="hidden sm:inline">TF:</span>
                 <span className="sm:hidden">TF:</span>
               </span>
-              <span className={`text-[9px] sm:text-xs font-bold ${activeModes.has('tensorflow') ? 'text-purple-400' : 'text-slate-500'}`}>
-                {activeModes.has('tensorflow') ? 'On' : 'Off'}
+              <span className={`text-xs sm:text-sm font-bold ${activeModes.has('tensorflow') && detectionCounts.faces > 0 ? 'text-purple-400' : 'text-slate-500'}`}>
+                {activeModes.has('tensorflow') && detectionCounts.faces > 0 ? `on(${detectionCounts.faces})` : 'Off'}
               </span>
             </div>
           </div>
