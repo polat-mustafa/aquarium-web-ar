@@ -66,8 +66,6 @@ export class MediaPipeDepthSensor {
 
       for (const cdnUrl of cdnUrls) {
         try {
-          console.log(`🔗 Trying MediaPipe CDN: ${cdnUrl}`);
-
           handsInstance = new Hands({
             locateFile: (file: string) => `${cdnUrl}${file}`
           });
@@ -91,7 +89,6 @@ export class MediaPipeDepthSensor {
 
           await Promise.race([initPromise, timeoutPromise]);
           this.hands = handsInstance;
-          console.log(`✅ MediaPipe loaded from: ${cdnUrl}`);
           initError = null;
           break;
         } catch (error) {
@@ -128,8 +125,6 @@ export class MediaPipeDepthSensor {
 
       // Start processing
       processFrame();
-
-      console.log('✅ MediaPipe initialized with 3D keypoints support');
     } catch (error) {
       console.error('❌ MediaPipe initialization failed:', error);
       throw error;
@@ -139,8 +134,6 @@ export class MediaPipeDepthSensor {
   private processHandResults(results: any): void {
     // ✅ FIXED: Now using multiHandWorldLandmarks (3D keypoints in metric scale)
     if (results.multiHandWorldLandmarks && results.multiHandWorldLandmarks.length > 0) {
-      console.log(`✋ MediaPipe detected ${results.multiHandWorldLandmarks.length} hand(s) with 3D keypoints`);
-
       const obstacles: ObstacleZone[] = results.multiHandWorldLandmarks.map((worldLandmarks: any, index: number) => {
         // Get 2D landmarks for bounding box
         const landmarks2D = results.multiHandLandmarks[index];
@@ -169,9 +162,6 @@ export class MediaPipeDepthSensor {
           Math.sqrt(kp.x * kp.x + kp.y * kp.y + kp.z * kp.z)
         );
         const avgDepth = keyDepths.reduce((sum: number, d: number) => sum + d, 0) / keyDepths.length;
-
-        console.log(`  ✅ Hand ${index}: REAL DEPTH = ${realDepth.toFixed(3)}m (wrist), AVG = ${avgDepth.toFixed(3)}m`);
-        console.log(`    3D Wrist Position: x=${wrist.x.toFixed(3)}m, y=${wrist.y.toFixed(3)}m, z=${wrist.z.toFixed(3)}m`);
 
         const padding = 0.05;
         return {
@@ -415,24 +405,25 @@ export class TensorFlowDepthSensor {
       this.videoElement = videoElement;
       this.onObstaclesCallback = onObstacles;
 
-      console.log('🧠 Loading TensorFlow.js...');
       const tf = await import('@tensorflow/tfjs');
 
       // ✅ WebGL Optimization (from TensorFlow docs)
       await import('@tensorflow/tfjs-backend-webgl');
 
       // Set WebGL backend explicitly
-      await tf.setBackend('webgl');
+      try {
+        await tf.setBackend('webgl');
+      } catch (e) {
+        console.warn('WebGL backend failed, falling back to default:', e);
+      }
 
       // Apply WebGL optimizations
       tf.env().set('WEBGL_PACK', true);
       tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
 
       await tf.ready();
-      console.log('✅ TensorFlow.js ready with WebGL backend and optimizations');
 
       // ✅ FIXED: Use Hand Pose Detection with 3D keypoints
-      console.log('🧠 Loading Hand Pose Detection model...');
       const handPoseDetection = await import('@tensorflow-models/hand-pose-detection');
 
       // Create detector with TensorFlow.js runtime
@@ -445,7 +436,6 @@ export class TensorFlowDepthSensor {
         }
       );
 
-      console.log('✅ TensorFlow Hand Pose Detection model loaded with 3D keypoints');
       this.startProcessing();
     } catch (error) {
       console.error('❌ TensorFlow initialization failed:', error);
@@ -487,16 +477,19 @@ export class TensorFlowDepthSensor {
     const obstacles: ObstacleZone[] = [];
 
     try {
-      if (!this.videoElement) return [];
+      if (!this.videoElement || !hands || hands.length === 0) return [];
 
       const videoWidth = this.videoElement.videoWidth;
       const videoHeight = this.videoElement.videoHeight;
 
-      console.log(`🧠 TensorFlow detected ${hands.length} hand(s) with 3D keypoints`);
+      if (!videoWidth || !videoHeight) return [];
 
       // Convert hand predictions to obstacle zones
       hands.forEach((hand, index) => {
-        if (!hand.keypoints || !hand.keypoints3D) return;
+        // Check if keypoints exist - keypoints3D might not always be available
+        if (!hand.keypoints || hand.keypoints.length === 0) return;
+
+        const hasDepth = hand.keypoints3D && hand.keypoints3D.length > 0;
 
         // Get 2D bounding box
         const xs = hand.keypoints.map((kp: any) => kp.x);
@@ -507,38 +500,43 @@ export class TensorFlowDepthSensor {
         const minY = Math.min(...ys) / videoHeight;
         const maxY = Math.max(...ys) / videoHeight;
 
-        // ✅ REAL DEPTH: Calculate from 3D keypoints (METRIC SCALE - meters)
-        const wrist = hand.keypoints3D.find((kp: any) => kp.name === 'wrist');
+        // Calculate depth if 3D keypoints are available
+        let depth: number | undefined;
 
-        if (wrist) {
-          // ✅ TENSORFLOW.JS FORMULA: sqrt(x² + y² + z²) for distance from origin
-          const realDepth = Math.sqrt(
-            wrist.x * wrist.x +
-            wrist.y * wrist.y +
-            wrist.z * wrist.z
-          );
+        if (hasDepth) {
+          // ✅ REAL DEPTH: Calculate from 3D keypoints (METRIC SCALE - meters)
+          const wrist = hand.keypoints3D[0]; // Wrist is typically first keypoint
 
-          // Calculate average depth from multiple keypoints (more accurate)
-          const keyDepths = hand.keypoints3D.map((kp: any) =>
-            Math.sqrt(kp.x * kp.x + kp.y * kp.y + kp.z * kp.z)
-          );
-          const avgDepth = keyDepths.reduce((sum: number, d: number) => sum + d, 0) / keyDepths.length;
+          if (wrist && typeof wrist.x === 'number' && typeof wrist.y === 'number' && typeof wrist.z === 'number') {
+            // ✅ TENSORFLOW.JS FORMULA: sqrt(x² + y² + z²) for distance from origin
+            const realDepth = Math.sqrt(
+              wrist.x * wrist.x +
+              wrist.y * wrist.y +
+              wrist.z * wrist.z
+            );
 
-          console.log(`  ✅ Hand ${index}: REAL DEPTH = ${realDepth.toFixed(3)}m (wrist), AVG = ${avgDepth.toFixed(3)}m`);
-          console.log(`    Handedness: ${hand.handedness}, Score: ${hand.score?.toFixed(2)}`);
+            // Calculate average depth from multiple keypoints (more accurate)
+            const keyDepths = hand.keypoints3D
+              .filter((kp: any) => typeof kp.x === 'number' && typeof kp.y === 'number' && typeof kp.z === 'number')
+              .map((kp: any) => Math.sqrt(kp.x * kp.x + kp.y * kp.y + kp.z * kp.z));
 
-          const padding = 0.05;
-          obstacles.push({
-            id: `hand-${index}`,
-            x: Math.max(0, minX - padding),
-            y: Math.max(0, minY - padding),
-            width: Math.min(1, maxX - minX + padding * 2),
-            height: Math.min(1, maxY - minY + padding * 2),
-            depth: avgDepth, // ✅ REAL metric depth in meters!
-            type: 'hand' as const,
-            confidence: hand.score || 0.9
-          });
+            depth = keyDepths.length > 0
+              ? keyDepths.reduce((sum: number, d: number) => sum + d, 0) / keyDepths.length
+              : realDepth;
+          }
         }
+
+        const padding = 0.05;
+        obstacles.push({
+          id: `hand-${index}`,
+          x: Math.max(0, minX - padding),
+          y: Math.max(0, minY - padding),
+          width: Math.min(1, maxX - minX + padding * 2),
+          height: Math.min(1, maxY - minY + padding * 2),
+          depth: depth || 2.5, // Default depth if 3D not available
+          type: 'hand' as const,
+          confidence: hand.score || 0.9
+        });
       });
 
       return obstacles;

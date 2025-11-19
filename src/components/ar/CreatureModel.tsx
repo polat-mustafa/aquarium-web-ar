@@ -207,7 +207,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
   // WEBXR SURFACE: Position model on detected surface
   useEffect(() => {
     if (surfacePosition) {
-      console.log('🎯 Positioning model on surface:', surfacePosition);
       // Animate to surface position (slightly above the surface)
       const surfacePos: [number, number, number] = [
         surfacePosition[0],
@@ -242,7 +241,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
   // TEST: Hide Behind Object trigger
   useEffect(() => {
     if (triggerHideBehind > 0) {
-      console.log('🧪 TEST: Hide Behind triggered! Objects:', detectedObjects.length);
       pendingHideRef.current = triggerHideBehind;
       setIsAvoidingObstacle(false);
     }
@@ -251,7 +249,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
   // TEST: Explore Behind trigger
   useEffect(() => {
     if (triggerExplore > 0) {
-      console.log('🧪 TEST: Explore Behind triggered! Objects:', detectedObjects.length);
       pendingExploreRef.current = triggerExplore;
       setIsAvoidingObstacle(false);
     }
@@ -351,7 +348,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
 
     // If no objects, create a virtual object for animation
     if (detectedObjects.length === 0) {
-      console.log('⚠️ No objects detected - creating virtual object for animation');
       const virtualObject = {
         id: 'virtual-object',
         position: [0, -1, -2] as [number, number, number],
@@ -443,8 +439,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
     }
 
     if (bestObject) {
-      console.log(`🐟 ${reason === 'threat' ? 'HIDING' : 'EXPLORING'} behind ${bestObject.type}!`);
-
       // Calculate position behind object (further away from camera)
       const objDepth = Math.sqrt(
         bestObject.position[0] * bestObject.position[0] +
@@ -474,7 +468,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
       setHidingBehindObject(bestObject.id);
 
       // ⭐ VISUAL: Start FADE OUT animation (disappear effect)
-      console.log('👻 FADING OUT - Fish disappearing behind object!');
       opacityAnimationRef.current = {
         progress: 0,
         from: modelOpacity,
@@ -488,8 +481,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
       // Reset hiding state after animation
       const hideDuration = reason === 'threat' ? 4000 : 3000;
       setTimeout(() => {
-        console.log('👁️ FADING IN - Fish reappearing!');
-
         // ⭐ VISUAL: Start FADE IN animation (reappear effect)
         opacityAnimationRef.current = {
           progress: 0,
@@ -525,12 +516,10 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
 
     // TEST TRIGGERS: Handle test button triggers
     if (pendingHideRef.current > 0) {
-      console.log('🧪 Executing hide behind test...');
       hideBehindObject(dynamicPosition, state.camera, 'threat');
       pendingHideRef.current = 0;
     }
     if (pendingExploreRef.current > 0) {
-      console.log('🧪 Executing explore behind test...');
       hideBehindObject(dynamicPosition, state.camera, 'explore');
       pendingExploreRef.current = 0;
     }
@@ -545,7 +534,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
       if (collision && !isAvoidingObstacle && !isHiding) {
         // HIDE BEHIND OBJECT when hand/face detected (threat response)
         if (detectedObjects.length > 0 && (collision.type === 'hand' || collision.type === 'person')) {
-          console.log(`⚠️ THREAT DETECTED: ${collision.type.toUpperCase()}! Hiding behind object...`);
           hideBehindObject(dynamicPosition, state.camera, 'threat');
         } else {
           // Normal avoidance if no objects to hide behind
@@ -561,7 +549,6 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
 
       // 30% chance to explore behind object
       if (Math.random() < 0.3) {
-        console.log('🐟 Exploring behind object...');
         hideBehindObject(dynamicPosition, state.camera, 'explore');
       }
     }

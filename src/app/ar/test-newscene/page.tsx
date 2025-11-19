@@ -285,13 +285,11 @@ function TestNewSceneContent() {
           setShowEnvironmentScan(true);
 
           // ⭐ AUTO-START: Automatically start ALL environment detection
-          console.log('🎯 Auto-starting environment detection (WebXR + MediaPipe)...');
           setTimeout(async () => {
             if (!mounted) return;
 
             try {
               // 1. Start MediaPipe for hand/face detection
-              console.log('🖐️ Starting MediaPipe...');
               await depthManagerRef.current.setMode(
                 'mediapipe',
                 videoRef.current!,
@@ -299,43 +297,24 @@ function TestNewSceneContent() {
                   setObstacleZones(zones);
                   const handCount = zones.filter(z => z.type === 'hand').length;
                   setDetectionCounts(prev => ({ ...prev, hands: handCount }));
-
-                  // 🖥️ DESKTOP TESTING: Detailed console logs
-                  console.log('═══════════════════════════════════════');
-                  console.log('📊 DETECTION UPDATE:', new Date().toLocaleTimeString());
-                  console.log('🖐️ Hands detected:', handCount);
-                  console.log('📍 Total zones:', zones.length);
-                  zones.forEach((zone, i) => {
-                    console.log(`  Zone ${i+1}:`, zone.type, `at (${zone.x.toFixed(0)}, ${zone.y.toFixed(0)})`);
-                  });
-                  console.log('═══════════════════════════════════════');
                 }
               );
               setDepthSensingMode('mediapipe');
               setDepthSensorReady(true);
-              console.log('✅ MediaPipe started');
 
               // 2. Start WebXR for environment/surface detection
               if ('xr' in navigator && navigator.xr) {
-                console.log('🌐 Starting WebXR...');
                 try {
                   const isSupported = await navigator.xr.isSessionSupported('immersive-ar');
                   if (isSupported) {
                     startWebXR(); // Use existing WebXR function
-                    console.log('✅ WebXR started');
-                  } else {
-                    console.log('⚠️ WebXR not supported on this device');
                   }
                 } catch (xrErr) {
-                  console.log('⚠️ WebXR error:', xrErr);
+                  // WebXR not available - silently ignore
                 }
-              } else {
-                console.log('⚠️ WebXR not available');
               }
-
-              console.log('✅ Environment detection started automatically');
             } catch (err) {
-              console.error('❌ Auto-start failed:', err);
+              console.error('Auto-start failed:', err);
             }
           }, 2000); // Wait 2 seconds for camera to stabilize
 
@@ -435,7 +414,6 @@ function TestNewSceneContent() {
 
   // DEPTH SENSING: Handle mode change
   const handleDepthModeChange = useCallback(async (mode: DepthSensingMode) => {
-    console.log(`🔄 Switching to ${mode} mode...`);
     setDepthSensingMode(mode);
     setErrorMessage(null);
     setDepthSensorReady(false);
@@ -445,7 +423,6 @@ function TestNewSceneContent() {
       depthManagerRef.current.stop();
       setActiveModes(new Set(['none']));
       setIsRunningAll(false);
-      console.log('⏹️ Depth sensing stopped');
       return;
     }
 
@@ -469,8 +446,6 @@ function TestNewSceneContent() {
     }
 
     try {
-      console.log(`📹 Video ready: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
-
       await depthManagerRef.current.setMode(
         mode,
         videoRef.current,
@@ -481,9 +456,8 @@ function TestNewSceneContent() {
 
       setDepthSensorReady(true);
       setActiveModes(new Set([mode]));
-      console.log(`✅ ${mode.toUpperCase()} initialized successfully`);
     } catch (error: any) {
-      console.error(`❌ ${mode} initialization failed:`, error);
+      console.error(`${mode} initialization failed:`, error);
       const userFriendlyMsg = getUserFriendlyError(mode, error);
       setErrorMessage(userFriendlyMsg);
       setDepthSensingMode('none');
@@ -492,11 +466,8 @@ function TestNewSceneContent() {
 
   // RUN ALL MODES: Handle running all tracking simultaneously
   const handleRunAll = useCallback(async () => {
-    console.log('🚀 Starting ALL tracking modes simultaneously...');
     setIsRunningAll(true);
     setErrorMessage(null);
-    // Don't show visualization boxes - they block the screen
-    // setShowDepthVisualization(true);
     setShowScanningAnimation(true);
 
     if (!videoRef.current || !isCameraReady) {
@@ -509,7 +480,6 @@ function TestNewSceneContent() {
     const successfulModes = new Set<DepthSensingMode>();
 
     try {
-      console.log('📡 Starting MediaPipe...');
       await depthManagerRef.current.setMode(
         'mediapipe',
         videoRef.current,
@@ -521,14 +491,12 @@ function TestNewSceneContent() {
         }
       );
       successfulModes.add('mediapipe');
-      console.log('✅ MediaPipe started');
     } catch (error: any) {
-      console.error('❌ MediaPipe failed:', error);
+      console.error('MediaPipe failed:', error);
     }
 
     // Try TensorFlow (face detection)
     try {
-      console.log('📡 Starting TensorFlow...');
       const { TensorFlowDepthSensor } = await import('@/utils/depthSensing');
       const tfSensor = new TensorFlowDepthSensor();
 
@@ -540,14 +508,12 @@ function TestNewSceneContent() {
 
       tensorflowSensorRef.current = tfSensor;
       successfulModes.add('tensorflow');
-      console.log('✅ TensorFlow started (face detection)');
     } catch (error: any) {
-      console.error('❌ TensorFlow failed:', error);
+      console.error('TensorFlow failed:', error);
     }
 
     // Try WebXR (Professional implementation following WebXR Cookbook)
     try {
-        console.log('📡 Starting WebXR AR session...');
         setWebxrStatus('Initializing...');
 
         const xr = (navigator as any).xr;
@@ -557,7 +523,6 @@ function TestNewSceneContent() {
 
         // Check if immersive-ar is supported
         const isARSupported = await xr.isSessionSupported('immersive-ar');
-        console.log(`AR supported: ${isARSupported}`);
 
         if (!isARSupported) {
           throw new Error('immersive-ar not supported on this device');
@@ -569,13 +534,11 @@ function TestNewSceneContent() {
           optionalFeatures: ['hit-test', 'dom-overlay', 'local', 'local-floor']
         });
 
-        console.log('✅ WebXR AR session created!');
         setWebxrStatus('Active');
         successfulModes.add('webxr');
 
         // Request reference space for AR (use 'local' not 'local-floor')
         const xrRefSpace = await session.requestReferenceSpace('local');
-        console.log('✅ Reference space created: local');
 
         // Create hit test source using viewer space
         const viewerSpace = await session.requestReferenceSpace('viewer');
@@ -585,9 +548,8 @@ function TestNewSceneContent() {
           hitTestSource = await session.requestHitTestSource({
             space: viewerSpace
           });
-          console.log('✅ Hit test source created');
         } catch (e) {
-          console.warn('⚠️ Hit test not available:', e);
+          // Hit test not available - silently ignore
         }
 
         // XR Animation loop
@@ -706,21 +668,6 @@ function TestNewSceneContent() {
                 setSurfacePoses(poses);
                 setDetectedObjects(objects);
 
-                // 🖥️ DESKTOP TESTING: WebXR detection logs
-                if (objects.length > 0 || poses.length > 0) {
-                  console.log('═══════════════════════════════════════');
-                  console.log('🌐 WEBXR UPDATE:', new Date().toLocaleTimeString());
-                  console.log('📦 Objects detected:', objects.length);
-                  objects.forEach((obj, i) => {
-                    const dist = Math.sqrt(obj.position[0]**2 + obj.position[1]**2 + obj.position[2]**2);
-                    console.log(`  Object ${i+1}:`, obj.type, `${dist.toFixed(2)}m away`);
-                    console.log(`    Size: ${(obj.dimensions.width*100).toFixed(0)}×${(obj.dimensions.height*100).toFixed(0)}×${(obj.dimensions.depth*100).toFixed(0)}cm`);
-                    console.log(`    Volume: ${obj.volume.toFixed(2)}m³`);
-                  });
-                  console.log('📍 Surfaces detected:', poses.length);
-                  console.log('═══════════════════════════════════════');
-                }
-
                 // Merge WebXR obstacles with existing obstacles
                 setObstacleZones(prev => {
                   // Keep non-WebXR obstacles, add new WebXR obstacles
@@ -753,7 +700,6 @@ function TestNewSceneContent() {
 
         // Handle session end
         session.addEventListener('end', () => {
-          console.log('📴 WebXR session ended');
           setWebxrStatus('Ended');
           setDetectedSurfaces(0);
           setSurfacePoses([]);
@@ -761,7 +707,7 @@ function TestNewSceneContent() {
         });
 
       } catch (error: any) {
-        console.error('❌ WebXR initialization failed:', error);
+        console.error('WebXR initialization failed:', error);
         setWebxrStatus(`Failed: ${error.message}`);
       }
 
@@ -769,8 +715,6 @@ function TestNewSceneContent() {
       setActiveModes(successfulModes);
       setDepthSensorReady(true);
       setDepthSensingMode('mediapipe');
-      console.log(`✅ Running ${successfulModes.size} modes:`, Array.from(successfulModes).join(', '));
-      console.log('⚠️ Note: Only MediaPipe actually running due to single-manager limitation');
     } else {
       setErrorMessage('Failed to start any tracking mode');
       setIsRunningAll(false);
@@ -779,7 +723,6 @@ function TestNewSceneContent() {
 
   // STOP ALL MODES
   const handleStopAll = useCallback(() => {
-    console.log('⏹️ Stopping all tracking modes...');
     depthManagerRef.current.stop();
 
     // Stop TensorFlow sensor if running
