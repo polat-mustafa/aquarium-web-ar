@@ -75,7 +75,9 @@ const ARViewer: React.FC<ARViewerProps> = memo(({
   placedOrganisms = [],
   detectedObjects = [],
   triggerHideBehind = 0,
-  triggerExplore = 0
+  triggerExplore = 0,
+  fishScale = 1.0,
+  isUserSmiling = false
 }) => {
   // CRITICAL: Only select activeCreature, not currentAnimation to prevent unnecessary re-renders
   // Animation state changes should NOT cause Canvas to re-render
@@ -137,7 +139,7 @@ const ARViewer: React.FC<ARViewerProps> = memo(({
               key={activeCreature.id}
               creature={activeCreature}
               position={activeCreature.position}
-              scale={activeCreature.scale}
+              scale={activeCreature.scale * fishScale}
               obstacleZones={obstacleZones}
               enableCollisionDetection={enableCollisionDetection}
               triggerFeedReturn={triggerFeedReturn}
@@ -145,6 +147,7 @@ const ARViewer: React.FC<ARViewerProps> = memo(({
               detectedObjects={detectedObjects}
               triggerHideBehind={triggerHideBehind}
               triggerExplore={triggerExplore}
+              isUserSmiling={isUserSmiling}
             />
           ) : (
             // Keep a placeholder to maintain scene structure

@@ -26,6 +26,7 @@ interface CreatureModelProps {
   }>;
   triggerHideBehind?: number;
   triggerExplore?: number;
+  isUserSmiling?: boolean;
 }
 
 // Simple icon fallback for creatures without 3D models
@@ -81,6 +82,7 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
   detectedObjects = [],
   triggerHideBehind = 0,
   triggerExplore = 0,
+  isUserSmiling = false,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
@@ -96,6 +98,10 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
   const positionAnimationRef = useRef({ progress: 1, from: position, to: position });
   const [isAvoidingObstacle, setIsAvoidingObstacle] = useState(false);
   const lastObstacleCheckRef = useRef(0);
+
+  // Fish emotion states (smile detection, interaction reactions)
+  const [fishEmotion, setFishEmotion] = useState<'neutral' | 'happy' | 'scared'>('neutral');
+  const emotionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // HIDE BEHIND OBJECTS: New behavior states
   const [isHiding, setIsHiding] = useState(false);
@@ -253,6 +259,34 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
       setIsAvoidingObstacle(false);
     }
   }, [triggerExplore, detectedObjects]);
+
+  // React to user smile - fish becomes happy!
+  useEffect(() => {
+    if (isUserSmiling) {
+      setFishEmotion('happy');
+      console.log('🐠 Fish is HAPPY! User is smiling 😊');
+
+      // Clear any existing timeout
+      if (emotionTimeoutRef.current) {
+        clearTimeout(emotionTimeoutRef.current);
+      }
+
+      // Return to neutral after 2 seconds
+      emotionTimeoutRef.current = setTimeout(() => {
+        setFishEmotion('neutral');
+      }, 2000);
+    }
+  }, [isUserSmiling]);
+
+  // React to obstacles - fish becomes scared when avoiding
+  useEffect(() => {
+    if (isAvoidingObstacle) {
+      setFishEmotion('scared');
+      console.log('🐠 Fish is SCARED! Avoiding obstacle');
+    } else if (!isUserSmiling) {
+      setFishEmotion('neutral');
+    }
+  }, [isAvoidingObstacle, isUserSmiling]);
 
   // Handle tap/click on creature
   const handleTap = useCallback(() => {

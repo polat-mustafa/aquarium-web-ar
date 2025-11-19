@@ -1119,6 +1119,15 @@ function TestNewSceneContent() {
         enabled={true}
       />
 
+      {/* Zoom Controls - Desktop only */}
+      <ZoomControls
+        currentScale={fishScale}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        minScale={0.5}
+        maxScale={3.0}
+      />
+
       {/* Floating Control Button - Mobile Friendly */}
       <div className="fixed top-20 right-4 z-50 flex flex-col items-end space-y-2 pointer-events-auto">
         {/* Quick tip tooltip */}
@@ -1788,6 +1797,8 @@ function TestNewSceneContent() {
           detectedObjects={detectedObjects}
           triggerHideBehind={triggerHideBehind}
           triggerExplore={triggerExplore}
+          fishScale={fishScale}
+          isUserSmiling={isUserSmiling}
         />
 
         {/* Bubble effects */}
