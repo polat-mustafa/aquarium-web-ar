@@ -12,6 +12,7 @@ export interface DeviceCapabilities {
   mediapipe: FeatureSupport;
   webxr: FeatureSupport;
   tensorflow: FeatureSupport;
+  midas: FeatureSupport;
 }
 
 /**
@@ -140,19 +141,44 @@ export async function checkTensorFlowSupport(): Promise<FeatureSupport> {
 }
 
 /**
+ * Check if MiDaS TFLite is supported
+ */
+export async function checkMiDaSSupport(): Promise<FeatureSupport> {
+  try {
+    // Check if TensorFlow.js can be loaded
+    const tf = await import('@tensorflow/tfjs');
+    await tf.ready();
+
+    // Don't import TFLite here - it causes build issues
+    // We'll check support when actually initializing MiDaS
+    return {
+      supported: true, // Assume supported if TF.js works
+    };
+  } catch (error) {
+    return {
+      supported: false,
+      reason: 'TensorFlow.js not available',
+      recommendation: 'Use a modern browser with WebGL support'
+    };
+  }
+}
+
+/**
  * Check all depth sensing capabilities
  */
 export async function checkAllCapabilities(): Promise<DeviceCapabilities> {
-  const [mediapipe, webxr, tensorflow] = await Promise.all([
+  const [mediapipe, webxr, tensorflow, midas] = await Promise.all([
     checkMediaPipeSupport(),
     checkWebXRSupport(),
-    checkTensorFlowSupport()
+    checkTensorFlowSupport(),
+    checkMiDaSSupport()
   ]);
 
   return {
     mediapipe,
     webxr,
-    tensorflow
+    tensorflow,
+    midas
   };
 }
 
@@ -180,7 +206,7 @@ export function getDeviceType(): 'desktop' | 'mobile' | 'quest' | 'unknown' {
 /**
  * Get recommended depth sensing mode for this device
  */
-export async function getRecommendedMode(): Promise<'mediapipe' | 'webxr' | 'tensorflow' | 'none'> {
+export async function getRecommendedMode(): Promise<'mediapipe' | 'webxr' | 'tensorflow' | 'midas' | 'none'> {
   const deviceType = getDeviceType();
   const capabilities = await checkAllCapabilities();
 
@@ -194,6 +220,11 @@ export async function getRecommendedMode(): Promise<'mediapipe' | 'webxr' | 'ten
     return 'mediapipe';
   }
 
+  // MiDaS for full depth map estimation
+  if (capabilities.midas.supported) {
+    return 'midas';
+  }
+
   // TensorFlow as fallback
   if (capabilities.tensorflow.supported) {
     return 'tensorflow';
@@ -205,8 +236,12 @@ export async function getRecommendedMode(): Promise<'mediapipe' | 'webxr' | 'ten
 /**
  * Get user-friendly error message
  */
-export function getUserFriendlyError(mode: 'mediapipe' | 'webxr' | 'tensorflow', error: Error): string {
+export function getUserFriendlyError(mode: 'mediapipe' | 'webxr' | 'tensorflow' | 'midas', error: Error): string {
   const deviceType = getDeviceType();
+
+  if (mode === 'midas') {
+    return 'MiDaS depth estimation requires WebGL and TFLite support. Your device may not support it. Try MediaPipe Hands instead.';
+  }
 
   if (mode === 'webxr') {
     if (deviceType === 'desktop') {

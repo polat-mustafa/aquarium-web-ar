@@ -23,7 +23,7 @@ export interface DepthFrame {
   format: 'float32' | 'luminance-alpha';
 }
 
-export type DepthSensingMode = 'mediapipe' | 'webxr' | 'tensorflow' | 'none';
+export type DepthSensingMode = 'mediapipe' | 'webxr' | 'tensorflow' | 'midas' | 'none';
 
 /**
  * MediaPipe Hand Detection with 3D Keypoints (TensorFlow.js Best Practice)
@@ -562,16 +562,239 @@ export class TensorFlowDepthSensor {
 }
 
 /**
+ * MiDaS TFLite Depth Estimation
+ * Real monocular depth estimation using MiDaS model
+ *
+ * NOTE: This requires manual installation of @tensorflow/tfjs-tflite
+ * which has build compatibility issues with Next.js.
+ * To use: npm install @tensorflow/tfjs-tflite@0.0.1-alpha.10 --legacy-peer-deps
+ * And place midas.tflite in /public/models/
+ */
+export class MiDaSDepthSensor {
+  private model: any = null;
+  private videoElement: HTMLVideoElement | null = null;
+  private onObstaclesCallback?: (zones: ObstacleZone[]) => void;
+  private onDepthMapCallback?: (depthMap: any) => void;
+  private isProcessing = false;
+  private rafId: number | null = null;
+
+  async initialize(
+    videoElement: HTMLVideoElement,
+    onObstacles: (zones: ObstacleZone[]) => void,
+    onDepthMap?: (depthMap: any) => void
+  ): Promise<void> {
+    try {
+      this.videoElement = videoElement;
+      this.onObstaclesCallback = onObstacles;
+      this.onDepthMapCallback = onDepthMap;
+
+      // Load TensorFlow.js
+      const tf = await import('@tensorflow/tfjs');
+      await tf.ready();
+
+      // IMPORTANT: TFLite import must be dynamic to avoid build issues
+      // Only import when actually running in browser
+      if (typeof window === 'undefined') {
+        throw new Error('MiDaS only works in browser environment');
+      }
+
+      // Dynamic import of TFLite - requires manual installation
+      // npm install @tensorflow/tfjs-tflite@0.0.1-alpha.10 --legacy-peer-deps
+      const tflite = await import('@tensorflow/tfjs-tflite').catch((err) => {
+        throw new Error(
+          `TFLite not installed. To use MiDaS:\n` +
+          `1. Run: npm install @tensorflow/tfjs-tflite@0.0.1-alpha.10 --legacy-peer-deps\n` +
+          `2. Place midas.tflite in /public/models/\n` +
+          `3. See MIDAS_SETUP.md for details\n` +
+          `Error: ${err.message}`
+        );
+      });
+
+      // Set WASM path
+      await tflite.setWasmPath('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite@0.0.1-alpha.10/wasm/');
+
+      // Load MiDaS model
+      const modelUrl = '/models/midas.tflite';
+      this.model = await tflite.loadTFLiteModel(modelUrl).catch((err) => {
+        throw new Error(
+          `Failed to load MiDaS model from ${modelUrl}.\n` +
+          `Make sure midas.tflite exists in /public/models/\n` +
+          `See MIDAS_SETUP.md for setup instructions.\n` +
+          `Error: ${err.message}`
+        );
+      });
+
+      this.startProcessing();
+    } catch (error) {
+      console.error('MiDaS initialization failed:', error);
+      throw error;
+    }
+  }
+
+  private async startProcessing(): Promise<void> {
+    const processFrame = async () => {
+      if (!this.model || !this.videoElement || this.isProcessing) {
+        this.rafId = requestAnimationFrame(processFrame);
+        return;
+      }
+
+      try {
+        this.isProcessing = true;
+
+        // Preprocess image
+        const preprocessed = await this.preprocessImage(this.videoElement);
+
+        // Predict depth
+        const depthMap = await this.predictDepth(preprocessed);
+
+        // Extract obstacles from depth map
+        const obstacles = this.extractObstaclesFromDepth(depthMap);
+        this.onObstaclesCallback?.(obstacles);
+
+        // Send depth map to callback if provided
+        this.onDepthMapCallback?.(depthMap);
+
+        // Clean up tensors
+        preprocessed.dispose();
+        depthMap.dispose();
+
+      } catch (error) {
+        console.error('MiDaS processing error:', error);
+      } finally {
+        this.isProcessing = false;
+      }
+
+      // Process at ~2 FPS (MiDaS is computationally expensive)
+      setTimeout(() => {
+        this.rafId = requestAnimationFrame(processFrame);
+      }, 500);
+    };
+
+    processFrame();
+  }
+
+  private async preprocessImage(videoElement: HTMLVideoElement): Promise<any> {
+    const tf = await import('@tensorflow/tfjs');
+
+    // Convert video to tensor
+    const tensor = tf.browser.fromPixels(videoElement).toFloat();
+
+    // Resize to 256x256 (MiDaS requirement)
+    const resized = tf.image.resizeBilinear(tensor, [256, 256]);
+
+    // Normalize to [0,1] and add batch dimension
+    const normalized = resized.div(255.0).expandDims(0);
+
+    tensor.dispose();
+    resized.dispose();
+
+    return normalized;
+  }
+
+  private async predictDepth(preprocessedImage: any): Promise<any> {
+    const tf = await import('@tensorflow/tfjs');
+
+    // Run inference
+    const depthMap = this.model.predict(preprocessedImage);
+
+    // Remove batch dimension
+    const squeezed = depthMap.squeeze();
+
+    // Normalize to [0, 255]
+    const max = squeezed.max();
+    const normalized = squeezed.div(max).mul(255);
+
+    depthMap.dispose();
+
+    return normalized;
+  }
+
+  private extractObstaclesFromDepth(depthMap: any): ObstacleZone[] {
+    const obstacles: ObstacleZone[] = [];
+
+    try {
+      const depthData = depthMap.dataSync();
+      const [height, width] = depthMap.shape;
+
+      // Divide image into grid for obstacle detection
+      const gridSize = 8;
+      const cellWidth = width / gridSize;
+      const cellHeight = height / gridSize;
+
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          // Sample depth values in this cell
+          const samples: number[] = [];
+          for (let dy = 0; dy < cellHeight; dy += 4) {
+            for (let dx = 0; dx < cellWidth; dx += 4) {
+              const px = Math.floor(x * cellWidth + dx);
+              const py = Math.floor(y * cellHeight + dy);
+              const idx = py * width + px;
+              if (idx < depthData.length) {
+                samples.push(depthData[idx]);
+              }
+            }
+          }
+
+          if (samples.length > 0) {
+            // Calculate average depth in cell
+            const avgDepth = samples.reduce((a, b) => a + b, 0) / samples.length;
+
+            // Convert depth value to meters (inverse relationship)
+            // Higher pixel value = closer object
+            const depthMeters = (255 - avgDepth) / 255 * 5; // Map to 0-5 meters
+
+            // Detect obstacles (objects closer than 2 meters)
+            if (depthMeters < 2.0) {
+              obstacles.push({
+                id: `midas-${x}-${y}`,
+                x: x / gridSize,
+                y: y / gridSize,
+                width: 1 / gridSize,
+                height: 1 / gridSize,
+                depth: depthMeters,
+                type: 'object',
+                confidence: Math.min((2.0 - depthMeters) / 2.0, 1.0)
+              });
+            }
+          }
+        }
+      }
+
+      return obstacles;
+    } catch (error) {
+      console.error('Error extracting obstacles from depth:', error);
+      return [];
+    }
+  }
+
+  stop(): void {
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    this.isProcessing = false;
+
+    // Dispose model
+    if (this.model && typeof this.model.dispose === 'function') {
+      this.model.dispose();
+    }
+    this.model = null;
+  }
+}
+
+/**
  * Unified Depth Sensing Manager
  */
 export class DepthSensingManager {
-  private currentSensor: MediaPipeDepthSensor | WebXRDepthSensor | TensorFlowDepthSensor | null = null;
+  private currentSensor: MediaPipeDepthSensor | WebXRDepthSensor | TensorFlowDepthSensor | MiDaSDepthSensor | null = null;
   private currentMode: DepthSensingMode = 'none';
 
   async setMode(
     mode: DepthSensingMode,
     videoElement: HTMLVideoElement,
-    onObstacles: (zones: ObstacleZone[]) => void
+    onObstacles: (zones: ObstacleZone[]) => void,
+    onDepthMap?: (depthMap: any) => void
   ): Promise<void> {
     // Stop current sensor
     if (this.currentSensor) {
@@ -603,6 +826,11 @@ export class DepthSensingManager {
         case 'tensorflow':
           this.currentSensor = new TensorFlowDepthSensor();
           await this.currentSensor.initialize(videoElement, onObstacles);
+          break;
+
+        case 'midas':
+          this.currentSensor = new MiDaSDepthSensor();
+          await this.currentSensor.initialize(videoElement, onObstacles, onDepthMap);
           break;
       }
     } catch (error) {
