@@ -149,8 +149,11 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
         // Make everything visible
         loadedScene.visible = true;
         loadedScene.frustumCulled = false;
+
+        let meshCount = 0;
         loadedScene.traverse((child: any) => {
           if (child.isMesh) {
+            meshCount++;
             child.visible = true;
             child.frustumCulled = false;
             child.renderOrder = 999;
@@ -184,6 +187,14 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
           scaleNormalizationRef.current = 1;
         }
 
+        // Enhanced debugging for problematic models
+        console.log(`✅ MODEL LOADED: ${creature.name}`);
+        console.log(`📦 Meshes: ${meshCount}`);
+        console.log(`📐 Dimensions: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}`);
+        console.log(`📏 Max dimension: ${maxDim.toFixed(2)}`);
+        console.log(`🔍 Scale normalization: ${scaleNormalizationRef.current.toFixed(3)}`);
+        console.log(`🎬 Animations: ${gltf.animations?.length || 0}`);
+
         // Set up animations
         if (gltf.animations && gltf.animations.length > 0) {
           const mixer = new THREE.AnimationMixer(loadedScene);
@@ -205,6 +216,7 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
       },
       undefined,
       (err) => {
+        console.error(`❌ MODEL LOAD ERROR: ${creature.name}`, err);
         setError(err.message);
         setLoading(false);
       }
@@ -596,6 +608,8 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
 
       autonomousSwimRef.current.targetPosition = [randomX, randomY, randomZ];
       autonomousSwimRef.current.isMoving = true;
+
+      console.log(`🐠 ${creature.name} AUTONOMOUS SWIM: Moving to [${randomX.toFixed(2)}, ${randomY.toFixed(2)}, ${randomZ.toFixed(2)}]`);
 
       // Trigger position animation
       positionAnimationRef.current = {
