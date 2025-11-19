@@ -64,6 +64,15 @@ export const MODEL_REGISTRY: ModelDefinition[] = [
     approved: true  // ✅ Approved - shows in gallery and AR
   },
 
+  // Tilapia Buttikoferi (Zebra Tilapia)
+  {
+    fileName: 'Tillapia buttikoferi-fish.glb',
+    creatureName: 'Tilapia Buttikoferi',
+    category: 'fish',
+    modelPath: '/models/Tillapia buttikoferi-fish.glb',
+    approved: true  // ✅ Approved - shows in gallery and AR
+  },
+
   // Example: Attach model to existing creature
   // Uncomment and modify as needed:
   // {
