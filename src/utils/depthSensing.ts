@@ -405,6 +405,11 @@ export class TensorFlowDepthSensor {
   private isProcessing = false;
   private rafId: number | null = null;
 
+  // Detection smoothing to prevent flickering
+  private detectionHistory: Map<string, { count: number; lastSeen: number; zone: ObstacleZone }> = new Map();
+  private readonly DETECTION_THRESHOLD = 3; // Must be detected 3 times before showing
+  private readonly DETECTION_TIMEOUT = 500; // Remove if not seen for 500ms
+
   async initialize(videoElement: HTMLVideoElement, onObstacles: (zones: ObstacleZone[]) => void): Promise<void> {
     try {
       this.videoElement = videoElement;
@@ -532,23 +537,19 @@ export class TensorFlowDepthSensor {
         const handObstacles = this.extractObstaclesFromHands(hands);
         const faceObstacles = this.extractObstaclesFromFaces(faces);
         const objectObstacles = this.extractObstaclesFromObjects(objects);
-        const allObstacles = [...handObstacles, ...faceObstacles, ...objectObstacles];
+        const rawObstacles = [...handObstacles, ...faceObstacles, ...objectObstacles];
 
-        if (allObstacles.length > 0) {
-          console.log(`📍 TensorFlow created ${allObstacles.length} obstacle zone(s):`);
-          allObstacles.forEach((obs, idx) => {
-            console.log(`  Zone ${idx + 1}:`, {
-              label: obs.label || obs.type,
-              type: obs.type,
-              depth: obs.depth?.toFixed(2) + 'm',
-              confidence: (obs.confidence * 100).toFixed(0) + '%',
-              position: `(${(obs.x * 100).toFixed(0)}%, ${(obs.y * 100).toFixed(0)}%)`,
-              size: `${(obs.width * 100).toFixed(0)}% × ${(obs.height * 100).toFixed(0)}%`
-            });
+        // Apply smoothing to prevent flickering
+        const smoothedObstacles = this.smoothDetections(rawObstacles);
+
+        if (smoothedObstacles.length > 0) {
+          console.log(`📍 TensorFlow showing ${smoothedObstacles.length} stable obstacle(s):`);
+          smoothedObstacles.forEach((obs, idx) => {
+            console.log(`  ${idx + 1}. ${obs.label || obs.type} - ${obs.depth?.toFixed(2)}m`);
           });
         }
 
-        this.onObstaclesCallback?.(allObstacles);
+        this.onObstaclesCallback?.(smoothedObstacles);
 
       } catch (error) {
         console.error('❌ TensorFlow processing error:', error);
@@ -665,12 +666,18 @@ export class TensorFlowDepthSensor {
         const width = box.width / videoWidth;
         const height = box.height / videoHeight;
 
-        // Estimate depth based on face size (larger face = closer)
-        // Average face width is ~15cm, use inverse relationship
+        // Improved depth estimation based on face size
+        // Average human face width: ~15cm (0.15m)
+        // Formula: depth = (focal_length_factor * real_width) / pixel_width
         const faceWidthPixels = box.width;
-        const estimatedDepth = Math.max(0.3, Math.min(3.0, 150 / faceWidthPixels)); // 0.3m to 3m range
+        const focalLengthFactor = videoWidth * 0.6; // Calibrated for typical webcams
+        const realFaceWidth = 0.15; // meters
+        let estimatedDepth = (focalLengthFactor * realFaceWidth) / faceWidthPixels;
 
-        console.log(`    Face depth estimated: ${estimatedDepth.toFixed(2)}m (from face width ${faceWidthPixels.toFixed(0)}px)`);
+        // Clamp to reasonable range
+        estimatedDepth = Math.max(0.2, Math.min(5.0, estimatedDepth));
+
+        console.log(`    Face: ${estimatedDepth.toFixed(2)}m (width: ${faceWidthPixels.toFixed(0)}px)`);
 
         const padding = 0.05;
         obstacles.push({
@@ -715,24 +722,27 @@ export class TensorFlowDepthSensor {
         const normalizedWidth = width / videoWidth;
         const normalizedHeight = height / videoHeight;
 
-        // Estimate depth based on object size (larger = closer)
-        // Different objects have different typical sizes
-        const objectArea = width * height;
-        const relativeSize = objectArea / (videoWidth * videoHeight);
+        // Improved depth estimation using object height in frame
+        // Assumes objects are typically 0.3-1.0m tall (bottles, cups, laptops, etc.)
+        const objectHeightPixels = height;
+        const relativeHeight = objectHeightPixels / videoHeight;
 
-        // Depth estimation based on relative size in frame
+        // Inverse relationship: larger in frame = closer
+        // Formula: depth ≈ 1 / (relative_size * scale_factor)
         let estimatedDepth: number;
-        if (relativeSize > 0.3) {
-          estimatedDepth = 0.5; // Very large in frame = very close
-        } else if (relativeSize > 0.1) {
-          estimatedDepth = 1.0; // Large = close
-        } else if (relativeSize > 0.05) {
-          estimatedDepth = 1.5; // Medium = medium distance
+        if (relativeHeight > 0.5) {
+          estimatedDepth = 0.4; // Very large = very close
+        } else if (relativeHeight > 0.3) {
+          estimatedDepth = 0.7; // Large = close
+        } else if (relativeHeight > 0.15) {
+          estimatedDepth = 1.2; // Medium = medium distance
+        } else if (relativeHeight > 0.08) {
+          estimatedDepth = 1.8; // Small = far
         } else {
-          estimatedDepth = 2.5; // Small = far
+          estimatedDepth = 2.5; // Very small = very far
         }
 
-        console.log(`    ${obj.class} depth estimated: ${estimatedDepth.toFixed(2)}m (size: ${(relativeSize * 100).toFixed(1)}%)`);
+        console.log(`    ${obj.class}: ${estimatedDepth.toFixed(2)}m (height: ${(relativeHeight * 100).toFixed(0)}%)`);
 
         const padding = 0.02;
         obstacles.push({
@@ -755,12 +765,68 @@ export class TensorFlowDepthSensor {
     }
   }
 
+  /**
+   * Smooth detections to prevent flickering
+   * Only shows detections that have been stable for DETECTION_THRESHOLD frames
+   */
+  private smoothDetections(currentObstacles: ObstacleZone[]): ObstacleZone[] {
+    const now = Date.now();
+    const smoothed: ObstacleZone[] = [];
+
+    // Update history with current detections
+    const seenKeys = new Set<string>();
+
+    for (const obstacle of currentObstacles) {
+      // Create unique key based on type and approximate position
+      const key = `${obstacle.type}-${obstacle.label || ''}-${Math.round(obstacle.x * 10)}-${Math.round(obstacle.y * 10)}`;
+      seenKeys.add(key);
+
+      const existing = this.detectionHistory.get(key);
+
+      if (existing) {
+        // Update existing detection
+        existing.count++;
+        existing.lastSeen = now;
+        existing.zone = obstacle; // Update with latest data
+
+        // Only show if detected enough times
+        if (existing.count >= this.DETECTION_THRESHOLD) {
+          smoothed.push(obstacle);
+        }
+      } else {
+        // New detection
+        this.detectionHistory.set(key, {
+          count: 1,
+          lastSeen: now,
+          zone: obstacle
+        });
+      }
+    }
+
+    // Clean up old detections that haven't been seen recently
+    for (const [key, data] of this.detectionHistory.entries()) {
+      if (!seenKeys.has(key) && now - data.lastSeen > this.DETECTION_TIMEOUT) {
+        this.detectionHistory.delete(key);
+      } else if (!seenKeys.has(key)) {
+        // Keep showing for a bit even if not currently detected
+        if (data.count >= this.DETECTION_THRESHOLD) {
+          smoothed.push(data.zone);
+        }
+      }
+    }
+
+    return smoothed;
+  }
+
   stop(): void {
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
     this.isProcessing = false;
+
+    // Clear detection history
+    this.detectionHistory.clear();
 
     // Properly dispose of detectors to free up memory
     if (this.handDetector && typeof this.handDetector.dispose === 'function') {
