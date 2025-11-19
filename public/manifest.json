@@ -1,0 +1,22 @@
+{
+  "name": "Aquarium Web AR",
+  "short_name": "Aquarium AR",
+  "description": "Interactive AR aquarium experience with 3D marine life",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#1e40af",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["entertainment", "education"],
+  "dir": "ltr",
+  "lang": "en",
+  "scope": "/",
+  "prefer_related_applications": false
+}

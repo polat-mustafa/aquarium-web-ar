@@ -321,7 +321,6 @@ function TestNewSceneContent() {
                 try {
                   const isSupported = await navigator.xr.isSessionSupported('immersive-ar');
                   if (isSupported) {
-                    setWebXRAvailable(true);
                     startWebXR(); // Use existing WebXR function
                     console.log('✅ WebXR started');
                   } else {
@@ -1560,12 +1559,12 @@ function TestNewSceneContent() {
       <div className="fixed top-4 right-4 z-30 pointer-events-none">
         <div className="flex flex-col items-end space-y-2">
           {/* Detection active indicator */}
-          {(depthSensorReady || webXRActive) && (
+          {(depthSensorReady || webxrStatus !== 'Off') && (
             <div className="bg-green-500/90 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center space-x-2">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
               <span className="text-white text-xs font-bold">
                 {depthSensorReady && '🖐️'}
-                {webXRActive && '🌐'}
+                {webxrStatus !== 'Off' && '🌐'}
                 DETECTING
               </span>
             </div>
