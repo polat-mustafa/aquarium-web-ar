@@ -56,9 +56,28 @@ export const ScanningAnimation: React.FC<ScanningAnimationProps> = ({
   const colors = getModeColor();
   const pulseOpacity = 0.3 + Math.sin(pulsePhase * (Math.PI / 180)) * 0.2;
 
+  // ✅ FIXED: Calculate viewport dimensions for SVG paths (can't use calc() in SVG)
+  const [viewportSize, setViewportSize] = useState({ width: 1000, height: 1000 });
+
+  useEffect(() => {
+    const updateSize = () => {
+      setViewportSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  const w = viewportSize.width;
+  const h = viewportSize.height;
+
   return (
     <div className="fixed inset-0 pointer-events-none z-30">
-      {/* Corner Brackets */}
+      {/* Corner Brackets - Fixed SVG paths without calc() */}
       <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.6 }}>
         {/* Top Left */}
         <path
@@ -68,25 +87,25 @@ export const ScanningAnimation: React.FC<ScanningAnimationProps> = ({
           fill="none"
           strokeLinecap="round"
         />
-        {/* Top Right */}
+        {/* Top Right - ✅ FIXED: Use JavaScript calculation */}
         <path
-          d="M calc(100% - 40) 20 L calc(100% - 20) 20 L calc(100% - 20) 40"
+          d={`M ${w - 40} 20 L ${w - 20} 20 L ${w - 20} 40`}
           stroke={colors.primary}
           strokeWidth="3"
           fill="none"
           strokeLinecap="round"
         />
-        {/* Bottom Left */}
+        {/* Bottom Left - ✅ FIXED: Use JavaScript calculation */}
         <path
-          d="M 40 calc(100% - 20) L 20 calc(100% - 20) L 20 calc(100% - 40)"
+          d={`M 40 ${h - 20} L 20 ${h - 20} L 20 ${h - 40}`}
           stroke={colors.primary}
           strokeWidth="3"
           fill="none"
           strokeLinecap="round"
         />
-        {/* Bottom Right */}
+        {/* Bottom Right - ✅ FIXED: Use JavaScript calculation */}
         <path
-          d="M calc(100% - 40) calc(100% - 20) L calc(100% - 20) calc(100% - 20) L calc(100% - 20) calc(100% - 40)"
+          d={`M ${w - 40} ${h - 20} L ${w - 20} ${h - 20} L ${w - 20} ${h - 40}`}
           stroke={colors.primary}
           strokeWidth="3"
           fill="none"
