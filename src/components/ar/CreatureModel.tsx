@@ -111,6 +111,14 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
   const pendingHideRef = useRef(0);
   const pendingExploreRef = useRef(0);
 
+  // AUTONOMOUS SWIMMING: Fish swim around randomly
+  const autonomousSwimRef = useRef({
+    targetPosition: position,
+    lastChangeTime: 0,
+    changeInterval: Math.random() * 5000 + 3000, // Random 3-8 seconds
+    isMoving: false
+  });
+
   // VISUAL EFFECTS: Opacity for fade in/out when hiding
   const [modelOpacity, setModelOpacity] = useState(1);
   const opacityAnimationRef = useRef({ progress: 1, from: 1, to: 1 });
@@ -574,6 +582,27 @@ export const CreatureModel: React.FC<CreatureModelProps> = memo((  {
           avoidObstacle(collision, dynamicPosition, state.camera);
         }
       }
+    }
+
+    // AUTONOMOUS SWIMMING: Fish swim around randomly even without obstacles
+    if (!isHiding && !isAvoidingObstacle && time - autonomousSwimRef.current.lastChangeTime > autonomousSwimRef.current.changeInterval / 1000) {
+      autonomousSwimRef.current.lastChangeTime = time;
+      autonomousSwimRef.current.changeInterval = Math.random() * 6000 + 4000; // Random 4-10 seconds
+
+      // Generate random target position within camera view
+      const randomX = (Math.random() - 0.5) * 4; // -2 to 2
+      const randomY = (Math.random() - 0.5) * 3; // -1.5 to 1.5
+      const randomZ = -3 + (Math.random() - 0.5) * 2; // -4 to -2
+
+      autonomousSwimRef.current.targetPosition = [randomX, randomY, randomZ];
+      autonomousSwimRef.current.isMoving = true;
+
+      // Trigger position animation
+      positionAnimationRef.current = {
+        progress: 0,
+        from: dynamicPosition,
+        to: autonomousSwimRef.current.targetPosition
+      };
     }
 
     // RANDOM EXPLORATION: Occasionally swim behind objects during normal play
