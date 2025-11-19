@@ -299,6 +299,16 @@ function TestNewSceneContent() {
                   setObstacleZones(zones);
                   const handCount = zones.filter(z => z.type === 'hand').length;
                   setDetectionCounts(prev => ({ ...prev, hands: handCount }));
+
+                  // 🖥️ DESKTOP TESTING: Detailed console logs
+                  console.log('═══════════════════════════════════════');
+                  console.log('📊 DETECTION UPDATE:', new Date().toLocaleTimeString());
+                  console.log('🖐️ Hands detected:', handCount);
+                  console.log('📍 Total zones:', zones.length);
+                  zones.forEach((zone, i) => {
+                    console.log(`  Zone ${i+1}:`, zone.type, `at (${zone.x.toFixed(0)}, ${zone.y.toFixed(0)})`);
+                  });
+                  console.log('═══════════════════════════════════════');
                 }
               );
               setDepthSensingMode('mediapipe');
@@ -696,6 +706,21 @@ function TestNewSceneContent() {
 
                 setSurfacePoses(poses);
                 setDetectedObjects(objects);
+
+                // 🖥️ DESKTOP TESTING: WebXR detection logs
+                if (objects.length > 0 || poses.length > 0) {
+                  console.log('═══════════════════════════════════════');
+                  console.log('🌐 WEBXR UPDATE:', new Date().toLocaleTimeString());
+                  console.log('📦 Objects detected:', objects.length);
+                  objects.forEach((obj, i) => {
+                    const dist = Math.sqrt(obj.position[0]**2 + obj.position[1]**2 + obj.position[2]**2);
+                    console.log(`  Object ${i+1}:`, obj.type, `${dist.toFixed(2)}m away`);
+                    console.log(`    Size: ${(obj.dimensions.width*100).toFixed(0)}×${(obj.dimensions.height*100).toFixed(0)}×${(obj.dimensions.depth*100).toFixed(0)}cm`);
+                    console.log(`    Volume: ${obj.volume.toFixed(2)}m³`);
+                  });
+                  console.log('📍 Surfaces detected:', poses.length);
+                  console.log('═══════════════════════════════════════');
+                }
 
                 // Merge WebXR obstacles with existing obstacles
                 setObstacleZones(prev => {
@@ -1531,31 +1556,55 @@ function TestNewSceneContent() {
         </div>
       )}
 
-      {/* Minimal Object Indicators - Dots only */}
-      {detectedObjects.length > 0 && !placementMode && (
-        <div className="fixed top-4 right-4 z-30 pointer-events-none">
-          <div className="flex items-center space-x-1 bg-black/60 backdrop-blur-sm px-3 py-2 rounded-full">
-            {detectedObjects.map((obj, index) => {
-              const depth = Math.sqrt(
-                obj.position[0] * obj.position[0] +
-                obj.position[1] * obj.position[1] +
-                obj.position[2] * obj.position[2]
-              );
-              const color = obj.type === 'table' ? '#ff9800' : obj.type === 'wall' ? '#2196f3' : '#4caf50';
+      {/* Detection Status Indicator - Desktop Testing */}
+      <div className="fixed top-4 right-4 z-30 pointer-events-none">
+        <div className="flex flex-col items-end space-y-2">
+          {/* Detection active indicator */}
+          {(depthSensorReady || webXRActive) && (
+            <div className="bg-green-500/90 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center space-x-2">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              <span className="text-white text-xs font-bold">
+                {depthSensorReady && '🖐️'}
+                {webXRActive && '🌐'}
+                DETECTING
+              </span>
+            </div>
+          )}
 
-              return (
-                <div key={obj.id} className="flex items-center">
-                  <div
-                    className="w-2 h-2 rounded-full animate-pulse"
-                    style={{ backgroundColor: color }}
-                  />
-                </div>
-              );
-            })}
-            <span className="text-white/80 text-xs ml-2">{detectedObjects.length}</span>
-          </div>
+          {/* Object count indicator */}
+          {detectedObjects.length > 0 && !placementMode && (
+            <div className="flex items-center space-x-1 bg-black/60 backdrop-blur-sm px-3 py-2 rounded-full">
+              {detectedObjects.map((obj, index) => {
+                const depth = Math.sqrt(
+                  obj.position[0] * obj.position[0] +
+                  obj.position[1] * obj.position[1] +
+                  obj.position[2] * obj.position[2]
+                );
+                const color = obj.type === 'table' ? '#ff9800' : obj.type === 'wall' ? '#2196f3' : '#4caf50';
+
+                return (
+                  <div key={obj.id} className="flex items-center">
+                    <div
+                      className="w-2 h-2 rounded-full animate-pulse"
+                      style={{ backgroundColor: color }}
+                    />
+                  </div>
+                );
+              })}
+              <span className="text-white/80 text-xs ml-2">{detectedObjects.length}</span>
+            </div>
+          )}
+
+          {/* Hand detection count */}
+          {obstacleZones.length > 0 && (
+            <div className="bg-yellow-500/80 backdrop-blur-sm px-3 py-1 rounded-full">
+              <span className="text-white text-xs font-bold">
+                🖐️ {obstacleZones.filter(z => z.type === 'hand').length}
+              </span>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Distance Lines from Fish to Objects */}
       {detectedObjects.length > 0 && activeCreature && !placementMode && (
