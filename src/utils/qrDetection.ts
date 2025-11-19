@@ -20,7 +20,7 @@ export const initializeQRDetection = (
   }
 
   const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
+  const context = canvas.getContext('2d', { willReadFrequently: true });
   let animationFrameId: number;
   let lastDetectionTime = 0;
   const detectionCooldown = 500; // Reduced cooldown for better responsiveness

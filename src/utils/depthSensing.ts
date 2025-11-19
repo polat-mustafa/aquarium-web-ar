@@ -412,6 +412,9 @@ export class TensorFlowDepthSensor {
   private readonly DETECTION_THRESHOLD = 3; // Must be detected 3 times before showing
   private readonly DETECTION_TIMEOUT = 500; // Remove if not seen for 500ms
 
+  // Track last detection state to reduce console spam
+  private lastDetectionState: string = '';
+
   async initialize(videoElement: HTMLVideoElement, onObstacles: (zones: ObstacleZone[]) => void): Promise<void> {
     try {
       this.videoElement = videoElement;
@@ -504,7 +507,7 @@ export class TensorFlowDepthSensor {
           this.objectDetector.detect(this.videoElement)
         ]);
 
-        // Summary log (reduced verbosity)
+        // Only log when detection state changes (reduce console spam)
         const detectionSummary = [];
         if (hands && hands.length > 0) detectionSummary.push(`${hands.length} hand(s)`);
         if (faces && faces.length > 0) {
@@ -527,8 +530,10 @@ export class TensorFlowDepthSensor {
           detectionSummary.push(`${objects.length} object(s): ${objectNames}`);
         }
 
-        if (detectionSummary.length > 0) {
-          console.log(`🎯 TensorFlow: ${detectionSummary.join(' | ')}`);
+        const currentState = detectionSummary.join(' | ');
+        if (currentState !== this.lastDetectionState && detectionSummary.length > 0) {
+          console.log(`🎯 TensorFlow: ${currentState}`);
+          this.lastDetectionState = currentState;
         }
 
         // Extract obstacles from hands, faces, AND objects
@@ -540,23 +545,8 @@ export class TensorFlowDepthSensor {
         // Apply smoothing to prevent flickering
         const smoothedObstacles = this.smoothDetections(rawObstacles);
 
-        // Send to UI (simplified logging)
-        if (this.onObstaclesCallback && smoothedObstacles.length > 0) {
-          const summary = [];
-          const faces = smoothedObstacles.filter(o => o.type === 'person');
-          const hands = smoothedObstacles.filter(o => o.type === 'hand');
-          const objects = smoothedObstacles.filter(o => o.type === 'object');
-
-          if (faces.length > 0) {
-            const smiling = faces.some(f => f.isSmiling);
-            summary.push(`Face${smiling ? ' 😊' : ''}`);
-          }
-          if (hands.length > 0) summary.push(`${hands.length} hand(s)`);
-          if (objects.length > 0) summary.push(`${objects.length} object(s)`);
-
-          console.log(`✅ Sending to UI: ${summary.join(', ')}`);
-          this.onObstaclesCallback(smoothedObstacles);
-        } else if (this.onObstaclesCallback) {
+        // Send to UI (no logging - reduces spam)
+        if (this.onObstaclesCallback) {
           this.onObstaclesCallback(smoothedObstacles);
         }
 
@@ -566,10 +556,10 @@ export class TensorFlowDepthSensor {
         this.isProcessing = false;
       }
 
-      // Process at ~15 FPS for better performance
+      // Process at ~3 FPS to reduce CPU load and console spam
       setTimeout(() => {
         this.rafId = requestAnimationFrame(processFrame);
-      }, 66);
+      }, 333); // 333ms = ~3 FPS (reduced from 66ms = 15 FPS)
     };
 
     processFrame();
@@ -622,14 +612,13 @@ export class TensorFlowDepthSensor {
               .filter((kp: any) => typeof kp.x === 'number' && typeof kp.y === 'number' && typeof kp.z === 'number')
               .map((kp: any) => Math.sqrt(kp.x * kp.x + kp.y * kp.y + kp.z * kp.z));
 
-            depth = keyDepths.length > 0
+            const avgDepth = keyDepths.length > 0
               ? keyDepths.reduce((sum: number, d: number) => sum + d, 0) / keyDepths.length
               : realDepth;
 
-            console.log(`    Depth calculated: ${depth.toFixed(3)}m (from ${keyDepths.length} keypoints)`);
+            // Validate depth - prevent NaN
+            depth = (isNaN(avgDepth) || !isFinite(avgDepth)) ? undefined : avgDepth;
           }
-        } else {
-          console.log(`    ⚠️ No 3D keypoints available, using default depth`);
         }
 
         const padding = 0.05;
