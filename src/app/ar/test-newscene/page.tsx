@@ -22,6 +22,7 @@ import { EnvironmentScanAnimation } from '@/components/ar/EnvironmentScanAnimati
 import { getUserFriendlyError, checkAllCapabilities, type DeviceCapabilities } from '@/utils/featureDetection';
 import { Professional3DScanInterface } from '@/components/ar/Professional3DScanInterface';
 import { ScreenshotCaptureEffect } from '@/components/ar/ScreenshotCaptureEffect';
+import { EnvironmentDebugOverlay } from '@/components/ar/EnvironmentDebugOverlay';
 
 function TestNewSceneContent() {
   // CRITICAL FIX: Extract creature ID once with useMemo to prevent infinite re-renders
@@ -124,6 +125,9 @@ function TestNewSceneContent() {
   // Privacy Modal State
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+
+  // Debug overlay state
+  const [showDebugOverlay, setShowDebugOverlay] = useState(true); // ON by default to see environment data
 
   // Get language from Settings context
   const { language } = useSettings();
@@ -1080,6 +1084,14 @@ function TestNewSceneContent() {
         }}
       />
 
+      {/* Environment Debug Overlay - Shows ALL distances and depths */}
+      <EnvironmentDebugOverlay
+        obstacleZones={obstacleZones}
+        detectedObjects={detectedObjects}
+        mode={depthSensingMode}
+        enabled={showDebugOverlay}
+      />
+
       {/* Floating Control Button - Mobile Friendly */}
       <div className="fixed top-20 right-4 z-50 flex flex-col items-end space-y-2 pointer-events-auto">
         {/* Quick tip tooltip */}
@@ -1289,6 +1301,15 @@ function TestNewSceneContent() {
                   className="rounded w-4 h-4"
                 />
                 <span>Show Scanning Animation</span>
+              </label>
+              <label className="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showDebugOverlay}
+                  onChange={(e) => setShowDebugOverlay(e.target.checked)}
+                  className="rounded w-4 h-4"
+                />
+                <span>📊 Environment Debug (Distances)</span>
               </label>
             </div>
           )}

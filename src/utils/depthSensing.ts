@@ -405,6 +405,7 @@ export class TensorFlowDepthSensor {
       this.videoElement = videoElement;
       this.onObstaclesCallback = onObstacles;
 
+      console.log('🧠 TensorFlow: Starting initialization...');
       const tf = await import('@tensorflow/tfjs');
 
       // ✅ WebGL Optimization (from TensorFlow docs)
@@ -413,8 +414,9 @@ export class TensorFlowDepthSensor {
       // Set WebGL backend explicitly
       try {
         await tf.setBackend('webgl');
+        console.log('✅ TensorFlow: WebGL backend set');
       } catch (e) {
-        console.warn('WebGL backend failed, falling back to default:', e);
+        console.warn('⚠️ TensorFlow: WebGL backend failed, falling back to default:', e);
       }
 
       // Apply WebGL optimizations
@@ -422,8 +424,10 @@ export class TensorFlowDepthSensor {
       tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
 
       await tf.ready();
+      console.log('✅ TensorFlow.js ready');
 
       // ✅ FIXED: Use Hand Pose Detection with 3D keypoints
+      console.log('📦 Loading hand-pose-detection model...');
       const handPoseDetection = await import('@tensorflow-models/hand-pose-detection');
 
       // Create detector with TensorFlow.js runtime
@@ -436,6 +440,8 @@ export class TensorFlowDepthSensor {
         }
       );
 
+      console.log('✅ TensorFlow Hand Pose Detector created successfully');
+      console.log('🎯 TensorFlow initialization complete - starting processing...');
       this.startProcessing();
     } catch (error) {
       console.error('❌ TensorFlow initialization failed:', error);
@@ -455,11 +461,40 @@ export class TensorFlowDepthSensor {
 
         // ✅ Detect hands with 3D keypoints
         const hands = await this.detector.estimateHands(this.videoElement);
+
+        // Log detection info
+        if (hands && hands.length > 0) {
+          console.log(`🖐️ TensorFlow detected ${hands.length} hand(s)`);
+          hands.forEach((hand, idx) => {
+            const has3D = hand.keypoints3D && hand.keypoints3D.length > 0;
+            console.log(`  Hand ${idx + 1}:`, {
+              keypoints: hand.keypoints?.length || 0,
+              keypoints3D: has3D ? hand.keypoints3D.length : 0,
+              handedness: hand.handedness,
+              score: hand.score?.toFixed(2)
+            });
+          });
+        }
+
         const obstacles = this.extractObstaclesFromHands(hands);
+
+        if (obstacles.length > 0) {
+          console.log(`📍 TensorFlow created ${obstacles.length} obstacle zone(s):`);
+          obstacles.forEach((obs, idx) => {
+            console.log(`  Zone ${idx + 1}:`, {
+              type: obs.type,
+              depth: obs.depth?.toFixed(2) + 'm',
+              confidence: (obs.confidence * 100).toFixed(0) + '%',
+              position: `(${(obs.x * 100).toFixed(0)}%, ${(obs.y * 100).toFixed(0)}%)`,
+              size: `${(obs.width * 100).toFixed(0)}% × ${(obs.height * 100).toFixed(0)}%`
+            });
+          });
+        }
+
         this.onObstaclesCallback?.(obstacles);
 
       } catch (error) {
-        console.error('TensorFlow processing error:', error);
+        console.error('❌ TensorFlow processing error:', error);
       } finally {
         this.isProcessing = false;
       }
@@ -523,7 +558,11 @@ export class TensorFlowDepthSensor {
             depth = keyDepths.length > 0
               ? keyDepths.reduce((sum: number, d: number) => sum + d, 0) / keyDepths.length
               : realDepth;
+
+            console.log(`    Depth calculated: ${depth.toFixed(3)}m (from ${keyDepths.length} keypoints)`);
           }
+        } else {
+          console.log(`    ⚠️ No 3D keypoints available, using default depth`);
         }
 
         const padding = 0.05;
