@@ -92,8 +92,13 @@ export function EnvironmentDebugOverlay({
           {sortedObstacles.map((zone, idx) => (
             <div key={zone.id} className="mb-2 p-2 bg-yellow-500/10 rounded border border-yellow-500/30">
               <div className="font-bold text-yellow-300">
-                #{idx + 1}: {zone.type.toUpperCase()}
+                #{idx + 1}: {zone.label?.toUpperCase() || zone.type.toUpperCase()}
               </div>
+              {zone.label && zone.label !== zone.type && (
+                <div className="text-xs text-yellow-200">
+                  Type: {zone.type}
+                </div>
+              )}
 
               {/* Distance from Camera */}
               <div className="mt-1 text-green-300">

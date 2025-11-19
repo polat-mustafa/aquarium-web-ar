@@ -23,6 +23,7 @@ import { getUserFriendlyError, checkAllCapabilities, type DeviceCapabilities } f
 import { Professional3DScanInterface } from '@/components/ar/Professional3DScanInterface';
 import { ScreenshotCaptureEffect } from '@/components/ar/ScreenshotCaptureEffect';
 import { EnvironmentDebugOverlay } from '@/components/ar/EnvironmentDebugOverlay';
+import { ObjectLabelsOverlay } from '@/components/ar/ObjectLabelsOverlay';
 
 function TestNewSceneContent() {
   // CRITICAL FIX: Extract creature ID once with useMemo to prevent infinite re-renders
@@ -1090,6 +1091,12 @@ function TestNewSceneContent() {
         detectedObjects={detectedObjects}
         mode={depthSensingMode}
         enabled={showDebugOverlay}
+      />
+
+      {/* Object Labels Overlay - Shows labels ON detected objects */}
+      <ObjectLabelsOverlay
+        obstacleZones={obstacleZones}
+        enabled={true}
       />
 
       {/* Floating Control Button - Mobile Friendly */}

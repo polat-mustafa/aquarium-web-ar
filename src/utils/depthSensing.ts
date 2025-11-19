@@ -13,6 +13,7 @@ export interface ObstacleZone {
   height: number;
   depth?: number; // estimated depth in meters
   type: 'hand' | 'person' | 'object';
+  label?: string; // Specific object label (e.g., "chair", "table", "bottle")
   confidence?: number;
 }
 
@@ -389,13 +390,16 @@ export class WebXRDepthSensor {
 }
 
 /**
- * TensorFlow.js Hand Pose Detection with 3D Keypoints
- * ✅ FIXED: Now using Hand Pose Detection instead of BlazeFace
- * ✅ Uses keypoints3D for REAL metric depth (TensorFlow.js Best Practice)
+ * TensorFlow.js Comprehensive Environment Detection
+ * ✅ Hand detection with 3D keypoints
+ * ✅ Face detection
+ * ✅ COCO-SSD object detection (80+ object classes)
+ * Detects and labels: people, furniture, electronics, vehicles, animals, food, etc.
  */
 export class TensorFlowDepthSensor {
   private handDetector: any = null;
   private faceDetector: any = null;
+  private objectDetector: any = null;
   private videoElement: HTMLVideoElement | null = null;
   private onObstaclesCallback?: (zones: ObstacleZone[]) => void;
   private isProcessing = false;
@@ -457,7 +461,18 @@ export class TensorFlowDepthSensor {
       );
 
       console.log('✅ TensorFlow Face Detector created');
-      console.log('🎯 TensorFlow initialization complete - detecting hands AND faces!');
+
+      // ✅ NEW: Add COCO-SSD Object Detection (80+ object classes)
+      console.log('📦 Loading COCO-SSD object detection model...');
+      const cocoSsd = await import('@tensorflow-models/coco-ssd');
+
+      // Create object detector
+      this.objectDetector = await cocoSsd.load({
+        base: 'lite_mobilenet_v2' // Faster, good for real-time
+      });
+
+      console.log('✅ TensorFlow COCO-SSD Object Detector created');
+      console.log('🎯 TensorFlow initialization complete - detecting hands, faces, AND environment objects!');
       this.startProcessing();
     } catch (error) {
       console.error('❌ TensorFlow initialization failed:', error);
@@ -467,7 +482,7 @@ export class TensorFlowDepthSensor {
 
   private async startProcessing(): Promise<void> {
     const processFrame = async () => {
-      if (!this.handDetector || !this.faceDetector || !this.videoElement || this.isProcessing) {
+      if (!this.handDetector || !this.faceDetector || !this.objectDetector || !this.videoElement || this.isProcessing) {
         this.rafId = requestAnimationFrame(processFrame);
         return;
       }
@@ -475,10 +490,11 @@ export class TensorFlowDepthSensor {
       try {
         this.isProcessing = true;
 
-        // ✅ Detect hands AND faces in parallel
-        const [hands, faces] = await Promise.all([
+        // ✅ Detect hands, faces, AND objects in parallel
+        const [hands, faces, objects] = await Promise.all([
           this.handDetector.estimateHands(this.videoElement),
-          this.faceDetector.estimateFaces(this.videoElement)
+          this.faceDetector.estimateFaces(this.videoElement),
+          this.objectDetector.detect(this.videoElement)
         ]);
 
         // Log detection info
@@ -505,15 +521,24 @@ export class TensorFlowDepthSensor {
           });
         }
 
-        // Extract obstacles from both hands and faces
+        if (objects && objects.length > 0) {
+          console.log(`🌍 TensorFlow detected ${objects.length} environment object(s):`);
+          objects.forEach((obj, idx) => {
+            console.log(`  ${idx + 1}. ${obj.class.toUpperCase()} (${(obj.score * 100).toFixed(0)}%)`);
+          });
+        }
+
+        // Extract obstacles from hands, faces, AND objects
         const handObstacles = this.extractObstaclesFromHands(hands);
         const faceObstacles = this.extractObstaclesFromFaces(faces);
-        const allObstacles = [...handObstacles, ...faceObstacles];
+        const objectObstacles = this.extractObstaclesFromObjects(objects);
+        const allObstacles = [...handObstacles, ...faceObstacles, ...objectObstacles];
 
         if (allObstacles.length > 0) {
           console.log(`📍 TensorFlow created ${allObstacles.length} obstacle zone(s):`);
           allObstacles.forEach((obs, idx) => {
             console.log(`  Zone ${idx + 1}:`, {
+              label: obs.label || obs.type,
               type: obs.type,
               depth: obs.depth?.toFixed(2) + 'm',
               confidence: (obs.confidence * 100).toFixed(0) + '%',
@@ -667,6 +692,69 @@ export class TensorFlowDepthSensor {
     }
   }
 
+  private extractObstaclesFromObjects(objects: any[]): ObstacleZone[] {
+    const obstacles: ObstacleZone[] = [];
+
+    try {
+      if (!this.videoElement || !objects || objects.length === 0) return [];
+
+      const videoWidth = this.videoElement.videoWidth;
+      const videoHeight = this.videoElement.videoHeight;
+
+      if (!videoWidth || !videoHeight) return [];
+
+      // Convert COCO-SSD detections to obstacle zones
+      objects.forEach((obj, index) => {
+        if (!obj.bbox || obj.bbox.length !== 4) return;
+
+        const [x, y, width, height] = obj.bbox;
+
+        // Normalize coordinates to 0-1 range
+        const normalizedX = x / videoWidth;
+        const normalizedY = y / videoHeight;
+        const normalizedWidth = width / videoWidth;
+        const normalizedHeight = height / videoHeight;
+
+        // Estimate depth based on object size (larger = closer)
+        // Different objects have different typical sizes
+        const objectArea = width * height;
+        const relativeSize = objectArea / (videoWidth * videoHeight);
+
+        // Depth estimation based on relative size in frame
+        let estimatedDepth: number;
+        if (relativeSize > 0.3) {
+          estimatedDepth = 0.5; // Very large in frame = very close
+        } else if (relativeSize > 0.1) {
+          estimatedDepth = 1.0; // Large = close
+        } else if (relativeSize > 0.05) {
+          estimatedDepth = 1.5; // Medium = medium distance
+        } else {
+          estimatedDepth = 2.5; // Small = far
+        }
+
+        console.log(`    ${obj.class} depth estimated: ${estimatedDepth.toFixed(2)}m (size: ${(relativeSize * 100).toFixed(1)}%)`);
+
+        const padding = 0.02;
+        obstacles.push({
+          id: `object-${index}`,
+          x: Math.max(0, normalizedX - padding),
+          y: Math.max(0, normalizedY - padding),
+          width: Math.min(1, normalizedWidth + padding * 2),
+          height: Math.min(1, normalizedHeight + padding * 2),
+          depth: estimatedDepth,
+          type: 'object' as const,
+          label: obj.class, // ✅ OBJECT NAME (chair, table, bottle, etc.)
+          confidence: obj.score
+        });
+      });
+
+      return obstacles;
+    } catch (error) {
+      console.error('Error extracting obstacles from objects:', error);
+      return [];
+    }
+  }
+
   stop(): void {
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
@@ -684,6 +772,11 @@ export class TensorFlowDepthSensor {
       this.faceDetector.dispose();
     }
     this.faceDetector = null;
+
+    if (this.objectDetector && typeof this.objectDetector.dispose === 'function') {
+      this.objectDetector.dispose();
+    }
+    this.objectDetector = null;
   }
 }
 
