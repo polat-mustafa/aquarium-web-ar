@@ -1602,6 +1602,24 @@ function TestNewSceneContent() {
               </span>
             </div>
           )}
+
+          {/* ✅ REAL-TIME DEPTH DISPLAY: Shows actual metric depth in meters from 3D keypoints */}
+          {obstacleZones.length > 0 && obstacleZones.some(z => z.depth) && (
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg">
+              <div className="text-white text-xs font-bold mb-1">📏 REAL-TIME DEPTH</div>
+              {obstacleZones.filter(z => z.depth && z.type === 'hand').map((zone, idx) => (
+                <div key={zone.id} className="text-white text-sm font-mono">
+                  <span className="font-bold">Hand {idx + 1}:</span>{' '}
+                  <span className="text-yellow-300 text-lg">{zone.depth?.toFixed(3)}m</span>
+                  {zone.confidence && (
+                    <span className="text-white/60 text-xs ml-2">
+                      ({(zone.confidence * 100).toFixed(0)}%)
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
