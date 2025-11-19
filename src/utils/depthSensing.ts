@@ -420,11 +420,16 @@ export class TensorFlowDepthSensor {
 
       // ✅ WebGL Optimization (from TensorFlow docs)
       await import('@tensorflow/tfjs-backend-webgl');
+
+      // Set WebGL backend explicitly
+      await tf.setBackend('webgl');
+
+      // Apply WebGL optimizations
       tf.env().set('WEBGL_PACK', true);
       tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
 
       await tf.ready();
-      console.log('✅ TensorFlow.js ready with WebGL optimization');
+      console.log('✅ TensorFlow.js ready with WebGL backend and optimizations');
 
       // ✅ FIXED: Use Hand Pose Detection with 3D keypoints
       console.log('🧠 Loading Hand Pose Detection model...');
@@ -549,7 +554,12 @@ export class TensorFlowDepthSensor {
       this.rafId = null;
     }
     this.isProcessing = false;
-    this.model = null;
+
+    // Properly dispose of detector to free up memory
+    if (this.detector && typeof this.detector.dispose === 'function') {
+      this.detector.dispose();
+    }
+    this.detector = null;
   }
 }
 
