@@ -73,6 +73,15 @@ export const MODEL_REGISTRY: ModelDefinition[] = [
     approved: true  // ✅ Approved - shows in gallery and AR
   },
 
+  // Coral Fish
+  {
+    fileName: 'coral_fish-fish.glb',
+    creatureName: 'Coral Fish',
+    category: 'fish',
+    modelPath: '/models/coral_fish-fish.glb',
+    approved: true  // ✅ Approved - shows in gallery and AR
+  },
+
   // Example: Attach model to existing creature
   // Uncomment and modify as needed:
   // {
