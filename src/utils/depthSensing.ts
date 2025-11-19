@@ -394,7 +394,8 @@ export class WebXRDepthSensor {
  * ✅ Uses keypoints3D for REAL metric depth (TensorFlow.js Best Practice)
  */
 export class TensorFlowDepthSensor {
-  private detector: any = null;
+  private handDetector: any = null;
+  private faceDetector: any = null;
   private videoElement: HTMLVideoElement | null = null;
   private onObstaclesCallback?: (zones: ObstacleZone[]) => void;
   private isProcessing = false;
@@ -430,8 +431,8 @@ export class TensorFlowDepthSensor {
       console.log('📦 Loading hand-pose-detection model...');
       const handPoseDetection = await import('@tensorflow-models/hand-pose-detection');
 
-      // Create detector with TensorFlow.js runtime
-      this.detector = await handPoseDetection.createDetector(
+      // Create hand detector with TensorFlow.js runtime
+      this.handDetector = await handPoseDetection.createDetector(
         handPoseDetection.SupportedModels.MediaPipeHands,
         {
           runtime: 'tfjs', // TensorFlow.js runtime (good for iOS)
@@ -440,8 +441,23 @@ export class TensorFlowDepthSensor {
         }
       );
 
-      console.log('✅ TensorFlow Hand Pose Detector created successfully');
-      console.log('🎯 TensorFlow initialization complete - starting processing...');
+      console.log('✅ TensorFlow Hand Pose Detector created');
+
+      // ✅ NEW: Add Face Detection with BlazeFace
+      console.log('📦 Loading face-detection model...');
+      const faceDetection = await import('@tensorflow-models/face-detection');
+
+      // Create face detector
+      this.faceDetector = await faceDetection.createDetector(
+        faceDetection.SupportedModels.MediaPipeFaceDetector,
+        {
+          runtime: 'tfjs',
+          maxFaces: 2
+        }
+      );
+
+      console.log('✅ TensorFlow Face Detector created');
+      console.log('🎯 TensorFlow initialization complete - detecting hands AND faces!');
       this.startProcessing();
     } catch (error) {
       console.error('❌ TensorFlow initialization failed:', error);
@@ -451,7 +467,7 @@ export class TensorFlowDepthSensor {
 
   private async startProcessing(): Promise<void> {
     const processFrame = async () => {
-      if (!this.detector || !this.videoElement || this.isProcessing) {
+      if (!this.handDetector || !this.faceDetector || !this.videoElement || this.isProcessing) {
         this.rafId = requestAnimationFrame(processFrame);
         return;
       }
@@ -459,8 +475,11 @@ export class TensorFlowDepthSensor {
       try {
         this.isProcessing = true;
 
-        // ✅ Detect hands with 3D keypoints
-        const hands = await this.detector.estimateHands(this.videoElement);
+        // ✅ Detect hands AND faces in parallel
+        const [hands, faces] = await Promise.all([
+          this.handDetector.estimateHands(this.videoElement),
+          this.faceDetector.estimateFaces(this.videoElement)
+        ]);
 
         // Log detection info
         if (hands && hands.length > 0) {
@@ -476,11 +495,24 @@ export class TensorFlowDepthSensor {
           });
         }
 
-        const obstacles = this.extractObstaclesFromHands(hands);
+        if (faces && faces.length > 0) {
+          console.log(`👤 TensorFlow detected ${faces.length} face(s)`);
+          faces.forEach((face, idx) => {
+            console.log(`  Face ${idx + 1}:`, {
+              keypoints: face.keypoints?.length || 0,
+              score: face.box?.score?.toFixed(2) || 'N/A'
+            });
+          });
+        }
 
-        if (obstacles.length > 0) {
-          console.log(`📍 TensorFlow created ${obstacles.length} obstacle zone(s):`);
-          obstacles.forEach((obs, idx) => {
+        // Extract obstacles from both hands and faces
+        const handObstacles = this.extractObstaclesFromHands(hands);
+        const faceObstacles = this.extractObstaclesFromFaces(faces);
+        const allObstacles = [...handObstacles, ...faceObstacles];
+
+        if (allObstacles.length > 0) {
+          console.log(`📍 TensorFlow created ${allObstacles.length} obstacle zone(s):`);
+          allObstacles.forEach((obs, idx) => {
             console.log(`  Zone ${idx + 1}:`, {
               type: obs.type,
               depth: obs.depth?.toFixed(2) + 'm',
@@ -491,7 +523,7 @@ export class TensorFlowDepthSensor {
           });
         }
 
-        this.onObstaclesCallback?.(obstacles);
+        this.onObstaclesCallback?.(allObstacles);
 
       } catch (error) {
         console.error('❌ TensorFlow processing error:', error);
@@ -499,7 +531,7 @@ export class TensorFlowDepthSensor {
         this.isProcessing = false;
       }
 
-      // Process at ~15 FPS for better performance (was 10 FPS)
+      // Process at ~15 FPS for better performance
       setTimeout(() => {
         this.rafId = requestAnimationFrame(processFrame);
       }, 66);
@@ -585,6 +617,56 @@ export class TensorFlowDepthSensor {
     }
   }
 
+  private extractObstaclesFromFaces(faces: any[]): ObstacleZone[] {
+    const obstacles: ObstacleZone[] = [];
+
+    try {
+      if (!this.videoElement || !faces || faces.length === 0) return [];
+
+      const videoWidth = this.videoElement.videoWidth;
+      const videoHeight = this.videoElement.videoHeight;
+
+      if (!videoWidth || !videoHeight) return [];
+
+      // Convert face detections to obstacle zones
+      faces.forEach((face, index) => {
+        if (!face.box) return;
+
+        const box = face.box;
+
+        // Normalize box coordinates to 0-1 range
+        const x = box.xMin / videoWidth;
+        const y = box.yMin / videoHeight;
+        const width = box.width / videoWidth;
+        const height = box.height / videoHeight;
+
+        // Estimate depth based on face size (larger face = closer)
+        // Average face width is ~15cm, use inverse relationship
+        const faceWidthPixels = box.width;
+        const estimatedDepth = Math.max(0.3, Math.min(3.0, 150 / faceWidthPixels)); // 0.3m to 3m range
+
+        console.log(`    Face depth estimated: ${estimatedDepth.toFixed(2)}m (from face width ${faceWidthPixels.toFixed(0)}px)`);
+
+        const padding = 0.05;
+        obstacles.push({
+          id: `face-${index}`,
+          x: Math.max(0, x - padding),
+          y: Math.max(0, y - padding),
+          width: Math.min(1, width + padding * 2),
+          height: Math.min(1, height + padding * 2),
+          depth: estimatedDepth,
+          type: 'person' as const,
+          confidence: face.box.score || 0.9
+        });
+      });
+
+      return obstacles;
+    } catch (error) {
+      console.error('Error extracting obstacles from faces:', error);
+      return [];
+    }
+  }
+
   stop(): void {
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
@@ -592,11 +674,16 @@ export class TensorFlowDepthSensor {
     }
     this.isProcessing = false;
 
-    // Properly dispose of detector to free up memory
-    if (this.detector && typeof this.detector.dispose === 'function') {
-      this.detector.dispose();
+    // Properly dispose of detectors to free up memory
+    if (this.handDetector && typeof this.handDetector.dispose === 'function') {
+      this.handDetector.dispose();
     }
-    this.detector = null;
+    this.handDetector = null;
+
+    if (this.faceDetector && typeof this.faceDetector.dispose === 'function') {
+      this.faceDetector.dispose();
+    }
+    this.faceDetector = null;
   }
 }
 
