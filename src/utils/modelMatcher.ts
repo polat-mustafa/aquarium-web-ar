@@ -55,12 +55,12 @@ export const MODEL_REGISTRY: ModelDefinition[] = [
     approved: true  // ✅ Approved - shows in gallery and AR
   },
 
-  // Jellyfish - GLTF format
+  // Jellyfish - GLB format
   {
-    fileName: 'jellyfish-jellyfish.gltf',
+    fileName: 'jellyfish-jellyfish.glb',
     creatureName: 'Jellyfish',
     category: 'jellyfish',
-    modelPath: '/models/jellyfish-jellyfish.gltf',
+    modelPath: '/models/jellyfish-jellyfish.glb',
     approved: true  // ✅ Approved - shows in gallery and AR
   },
 

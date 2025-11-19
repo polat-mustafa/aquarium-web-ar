@@ -85,61 +85,152 @@ export function EnvironmentDebugOverlay({
         <div>Total Detections: {obstacleZones.length + detectedObjects.length}</div>
       </div>
 
-      {/* Obstacle Zones (MediaPipe/TensorFlow hands) */}
+      {/* Obstacle Zones - Separated by Type */}
       {sortedObstacles.length > 0 && (
         <div className="mb-3">
-          <div className="font-bold mb-2 text-yellow-400">🖐️ OBSTACLE ZONES ({sortedObstacles.length})</div>
-          {sortedObstacles.map((zone, idx) => (
-            <div key={zone.id} className="mb-2 p-2 bg-yellow-500/10 rounded border border-yellow-500/30">
-              <div className="font-bold text-yellow-300">
-                #{idx + 1}: {zone.label?.toUpperCase() || zone.type.toUpperCase()}
-              </div>
-              {zone.label && zone.label !== zone.type && (
-                <div className="text-xs text-yellow-200">
-                  Type: {zone.type}
+          {/* FACES */}
+          {sortedObstacles.filter(z => z.type === 'person').map((zone, idx) => (
+            <div key={zone.id} className="mb-3">
+              <div className="font-bold mb-2 text-pink-400">👤 FACE DETECTION</div>
+              <div className="p-2 bg-pink-500/10 rounded border border-pink-500/30">
+                <div className="font-bold text-pink-300">
+                  Face #{idx + 1} {zone.isSmiling ? '😊 SMILING!' : '😐 Neutral'}
                 </div>
-              )}
 
-              {/* Distance from Camera */}
-              <div className="mt-1 text-green-300">
-                📏 Distance: <span className="font-bold">{zone.distanceFromCamera.toFixed(2)}m</span>
-              </div>
+                {/* Smile Detection */}
+                <div className="mt-1 text-yellow-300">
+                  😊 Smile: <span className="font-bold">{zone.isSmiling ? 'YES' : 'NO'}</span>
+                </div>
 
-              {/* Depth */}
-              <div className="text-blue-300">
-                📊 Depth: <span className="font-bold">{(zone.depth || 0).toFixed(2)}m</span>
-              </div>
+                {/* Interaction State */}
+                <div className="text-green-300">
+                  🤝 Interacting: <span className="font-bold">{zone.isInteracting ? 'YES' : 'NO'}</span>
+                </div>
 
-              {/* 3D Position */}
-              <div className="text-purple-300">
-                📍 Position (est):
-              </div>
-              <div className="ml-4 text-gray-300">
-                X: {zone.estimatedPosition.x.toFixed(2)}m<br/>
-                Y: {zone.estimatedPosition.y.toFixed(2)}m<br/>
-                Z: {zone.estimatedPosition.z.toFixed(2)}m
-              </div>
+                {/* Distance from Camera */}
+                <div className="mt-1 text-green-300">
+                  📏 Distance: <span className="font-bold">{zone.distanceFromCamera.toFixed(2)}m</span>
+                </div>
 
-              {/* Screen Position */}
-              <div className="text-cyan-300 mt-1">
-                🖥️ Screen Position:
-              </div>
-              <div className="ml-4 text-gray-300">
-                X: {(zone.x * 100).toFixed(1)}% → {((zone.x + zone.width) * 100).toFixed(1)}%<br/>
-                Y: {(zone.y * 100).toFixed(1)}% → {((zone.y + zone.height) * 100).toFixed(1)}%
-              </div>
+                {/* Depth */}
+                <div className="text-blue-300">
+                  📊 Depth: <span className="font-bold">{(zone.depth || 0).toFixed(2)}m</span>
+                </div>
 
-              {/* Size */}
-              <div className="text-orange-300 mt-1">
-                📐 Size: {(zone.width * 100).toFixed(1)}% × {(zone.height * 100).toFixed(1)}%
-              </div>
+                {/* 3D Position */}
+                <div className="text-purple-300 mt-1">
+                  📍 Position (est):
+                </div>
+                <div className="ml-4 text-gray-300">
+                  X: {zone.estimatedPosition.x.toFixed(2)}m<br/>
+                  Y: {zone.estimatedPosition.y.toFixed(2)}m<br/>
+                  Z: {zone.estimatedPosition.z.toFixed(2)}m
+                </div>
 
-              {/* Confidence */}
-              <div className="text-pink-300">
-                ✨ Confidence: {((zone.confidence || 0) * 100).toFixed(0)}%
+                {/* Screen Position */}
+                <div className="text-cyan-300 mt-1">
+                  🖥️ Screen Position:
+                </div>
+                <div className="ml-4 text-gray-300">
+                  X: {(zone.x * 100).toFixed(1)}% → {((zone.x + zone.width) * 100).toFixed(1)}%<br/>
+                  Y: {(zone.y * 100).toFixed(1)}% → {((zone.y + zone.height) * 100).toFixed(1)}%
+                </div>
+
+                {/* Size */}
+                <div className="text-orange-300 mt-1">
+                  📐 Face Size: {(zone.width * 100).toFixed(1)}% × {(zone.height * 100).toFixed(1)}%
+                </div>
+
+                {/* Confidence */}
+                <div className="text-pink-300">
+                  ✨ Confidence: {((zone.confidence || 0) * 100).toFixed(0)}%
+                </div>
               </div>
             </div>
           ))}
+
+          {/* HANDS */}
+          {sortedObstacles.filter(z => z.type === 'hand').length > 0 && (
+            <div className="mb-3">
+              <div className="font-bold mb-2 text-yellow-400">🖐️ HAND DETECTION ({sortedObstacles.filter(z => z.type === 'hand').length})</div>
+              {sortedObstacles.filter(z => z.type === 'hand').map((zone, idx) => (
+                <div key={zone.id} className="mb-2 p-2 bg-yellow-500/10 rounded border border-yellow-500/30">
+                  <div className="font-bold text-yellow-300">
+                    #{idx + 1}: {zone.label?.toUpperCase() || 'HAND'}
+                  </div>
+
+                  {/* Distance from Camera */}
+                  <div className="mt-1 text-green-300">
+                    📏 Distance: <span className="font-bold">{zone.distanceFromCamera.toFixed(2)}m</span>
+                  </div>
+
+                  {/* Depth */}
+                  <div className="text-blue-300">
+                    📊 Depth: <span className="font-bold">{(zone.depth || 0).toFixed(2)}m</span>
+                  </div>
+
+                  {/* 3D Position */}
+                  <div className="text-purple-300">
+                    📍 Position (est):
+                  </div>
+                  <div className="ml-4 text-gray-300">
+                    X: {zone.estimatedPosition.x.toFixed(2)}m<br/>
+                    Y: {zone.estimatedPosition.y.toFixed(2)}m<br/>
+                    Z: {zone.estimatedPosition.z.toFixed(2)}m
+                  </div>
+
+                  {/* Confidence */}
+                  <div className="text-pink-300">
+                    ✨ Confidence: {((zone.confidence || 0) * 100).toFixed(0)}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* OBJECTS */}
+          {sortedObstacles.filter(z => z.type === 'object').length > 0 && (
+            <div className="mb-3">
+              <div className="font-bold mb-2 text-cyan-400">🌍 OBJECT DETECTION ({sortedObstacles.filter(z => z.type === 'object').length})</div>
+              {sortedObstacles.filter(z => z.type === 'object').map((zone, idx) => (
+                <div key={zone.id} className="mb-2 p-2 bg-cyan-500/10 rounded border border-cyan-500/30">
+                  <div className="font-bold text-cyan-300">
+                    #{idx + 1}: {zone.label?.toUpperCase() || 'UNKNOWN OBJECT'}
+                  </div>
+
+                  {/* Distance from Camera */}
+                  <div className="mt-1 text-green-300">
+                    📏 Distance: <span className="font-bold">{zone.distanceFromCamera.toFixed(2)}m</span>
+                  </div>
+
+                  {/* Depth */}
+                  <div className="text-blue-300">
+                    📊 Depth: <span className="font-bold">{(zone.depth || 0).toFixed(2)}m</span>
+                  </div>
+
+                  {/* 3D Position */}
+                  <div className="text-purple-300">
+                    📍 Position (est):
+                  </div>
+                  <div className="ml-4 text-gray-300">
+                    X: {zone.estimatedPosition.x.toFixed(2)}m<br/>
+                    Y: {zone.estimatedPosition.y.toFixed(2)}m<br/>
+                    Z: {zone.estimatedPosition.z.toFixed(2)}m
+                  </div>
+
+                  {/* Size */}
+                  <div className="text-orange-300 mt-1">
+                    📐 Size: {(zone.width * 100).toFixed(1)}% × {(zone.height * 100).toFixed(1)}%
+                  </div>
+
+                  {/* Confidence */}
+                  <div className="text-pink-300">
+                    ✨ Confidence: {((zone.confidence || 0) * 100).toFixed(0)}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

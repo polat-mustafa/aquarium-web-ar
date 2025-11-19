@@ -521,9 +521,27 @@ export class TensorFlowDepthSensor {
         if (faces && faces.length > 0) {
           console.log(`👤 TensorFlow detected ${faces.length} face(s)`);
           faces.forEach((face, idx) => {
+            // Detect smile
+            let isSmiling = false;
+            if (face.keypoints && face.keypoints.length >= 6) {
+              const mouth = face.keypoints[3];
+              const nose = face.keypoints[2];
+              if (mouth && nose && face.box) {
+                const mouthToNoseRatio = (nose.y - mouth.y) / face.box.height;
+                isSmiling = mouthToNoseRatio > 0.15;
+              }
+            }
+
             console.log(`  Face ${idx + 1}:`, {
               keypoints: face.keypoints?.length || 0,
-              score: face.box?.score?.toFixed(2) || 'N/A'
+              score: face.box?.score?.toFixed(2) || 'N/A',
+              smiling: isSmiling ? '😊 YES' : '😐 NO',
+              box: face.box ? {
+                x: Math.round(face.box.xMin),
+                y: Math.round(face.box.yMin),
+                width: Math.round(face.box.width),
+                height: Math.round(face.box.height)
+              } : 'N/A'
             });
           });
         }
@@ -531,7 +549,10 @@ export class TensorFlowDepthSensor {
         if (objects && objects.length > 0) {
           console.log(`🌍 TensorFlow detected ${objects.length} environment object(s):`);
           objects.forEach((obj, idx) => {
-            console.log(`  ${idx + 1}. ${obj.class.toUpperCase()} (${(obj.score * 100).toFixed(0)}%)`);
+            console.log(`  ${idx + 1}. ${obj.class.toUpperCase()} (${(obj.score * 100).toFixed(0)}%)`, {
+              bbox: obj.bbox ? `[${obj.bbox.map((v: number) => Math.round(v)).join(', ')}]` : 'N/A',
+              confidence: `${(obj.score * 100).toFixed(1)}%`
+            });
           });
         }
 
@@ -547,11 +568,26 @@ export class TensorFlowDepthSensor {
         if (smoothedObstacles.length > 0) {
           console.log(`📍 TensorFlow showing ${smoothedObstacles.length} stable obstacle(s):`);
           smoothedObstacles.forEach((obs, idx) => {
-            console.log(`  ${idx + 1}. ${obs.label || obs.type} - ${obs.depth?.toFixed(2)}m`);
+            const details = [
+              `${obs.label || obs.type}`,
+              `${obs.depth?.toFixed(2)}m`,
+              obs.isSmiling !== undefined ? (obs.isSmiling ? '😊' : '😐') : '',
+              obs.isInteracting ? '🤝' : ''
+            ].filter(Boolean).join(' ');
+            console.log(`  ${idx + 1}. ${details}`);
           });
         }
 
-        this.onObstaclesCallback?.(smoothedObstacles);
+        // Send to UI callback with detailed log
+        if (this.onObstaclesCallback) {
+          console.log(`🎯 Sending ${smoothedObstacles.length} obstacles to UI:`, {
+            hands: smoothedObstacles.filter(o => o.type === 'hand').length,
+            faces: smoothedObstacles.filter(o => o.type === 'person').length,
+            objects: smoothedObstacles.filter(o => o.type === 'object').length,
+            smiling: smoothedObstacles.some(o => o.isSmiling) ? '😊 YES' : '😐 NO'
+          });
+          this.onObstaclesCallback(smoothedObstacles);
+        }
 
       } catch (error) {
         console.error('❌ TensorFlow processing error:', error);
@@ -695,10 +731,10 @@ export class TensorFlowDepthSensor {
           }
         }
 
-        console.log(`    Face: ${estimatedDepth.toFixed(2)}m ${isSmiling ? '😊 SMILING!' : ''}`);
+        console.log(`    Face: ${estimatedDepth.toFixed(2)}m ${isSmiling ? '😊 SMILING!' : '😐 Neutral'}`);
 
         const padding = 0.05;
-        obstacles.push({
+        const faceZone: ObstacleZone = {
           id: `face-${index}`,
           x: Math.max(0, x - padding),
           y: Math.max(0, y - padding),
@@ -706,10 +742,21 @@ export class TensorFlowDepthSensor {
           height: Math.min(1, height + padding * 2),
           depth: estimatedDepth,
           type: 'person' as const,
+          label: 'Face',
           confidence: face.box.score || 0.9,
           isSmiling: isSmiling,
           isInteracting: true // Face always triggers fish interaction
+        };
+
+        console.log(`    ✅ Created face zone:`, {
+          id: faceZone.id,
+          depth: `${faceZone.depth?.toFixed(2)}m`,
+          isSmiling: faceZone.isSmiling ? '😊 YES' : '😐 NO',
+          isInteracting: faceZone.isInteracting ? '✅ YES' : '❌ NO',
+          confidence: `${((faceZone.confidence || 0) * 100).toFixed(0)}%`
         });
+
+        obstacles.push(faceZone);
       });
 
       return obstacles;
@@ -765,7 +812,7 @@ export class TensorFlowDepthSensor {
         console.log(`    ${obj.class}: ${estimatedDepth.toFixed(2)}m (height: ${(relativeHeight * 100).toFixed(0)}%)`);
 
         const padding = 0.02;
-        obstacles.push({
+        const objectZone: ObstacleZone = {
           id: `object-${index}`,
           x: Math.max(0, normalizedX - padding),
           y: Math.max(0, normalizedY - padding),
@@ -775,7 +822,16 @@ export class TensorFlowDepthSensor {
           type: 'object' as const,
           label: obj.class, // ✅ OBJECT NAME (chair, table, bottle, etc.)
           confidence: obj.score
+        };
+
+        console.log(`    ✅ Created object zone:`, {
+          id: objectZone.id,
+          label: objectZone.label,
+          depth: `${objectZone.depth?.toFixed(2)}m`,
+          confidence: `${((objectZone.confidence || 0) * 100).toFixed(0)}%`
         });
+
+        obstacles.push(objectZone);
       });
 
       return obstacles;
