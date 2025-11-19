@@ -82,31 +82,14 @@ function TestNewSceneContent() {
     dimensions: { width: number; height: number; depth: number };
     volume: number;
   }>>([]);
-  // MOCK OBJECTS: Always available for testing buttons
+  // DETECTED OBJECTS: Real-time environment detection (WebXR + MediaPipe)
   const [detectedObjects, setDetectedObjects] = useState<Array<{
     id: string;
     position: [number, number, number];
     dimensions: { width: number; height: number; depth: number };
     volume: number;
     type: 'table' | 'floor' | 'wall' | 'object';
-  }>>([
-    // Mock table object for testing
-    {
-      id: 'mock-table-1',
-      position: [0, -1, -2],
-      dimensions: { width: 2, height: 0.8, depth: 1 },
-      volume: 1.6,
-      type: 'table'
-    },
-    // Mock wall object for testing
-    {
-      id: 'mock-wall-1',
-      position: [-2, 0, -3],
-      dimensions: { width: 0.1, height: 3, depth: 2 },
-      volume: 0.6,
-      type: 'wall'
-    }
-  ]);
+  }>>([]);
 
   // POKEMON GO STYLE: Placed organisms tracking
   const [placedOrganisms, setPlacedOrganisms] = useState<Array<{
@@ -301,10 +284,14 @@ function TestNewSceneContent() {
           // Trigger environment scan animation on camera ready
           setShowEnvironmentScan(true);
 
-          // ⭐ AUTO-START: Automatically start environment detection
-          console.log('🎯 Auto-starting environment detection...');
+          // ⭐ AUTO-START: Automatically start ALL environment detection
+          console.log('🎯 Auto-starting environment detection (WebXR + MediaPipe)...');
           setTimeout(async () => {
+            if (!mounted) return;
+
             try {
+              // 1. Start MediaPipe for hand/face detection
+              console.log('🖐️ Starting MediaPipe...');
               await depthManagerRef.current.setMode(
                 'mediapipe',
                 videoRef.current!,
@@ -316,6 +303,27 @@ function TestNewSceneContent() {
               );
               setDepthSensingMode('mediapipe');
               setDepthSensorReady(true);
+              console.log('✅ MediaPipe started');
+
+              // 2. Start WebXR for environment/surface detection
+              if ('xr' in navigator && navigator.xr) {
+                console.log('🌐 Starting WebXR...');
+                try {
+                  const isSupported = await navigator.xr.isSessionSupported('immersive-ar');
+                  if (isSupported) {
+                    setWebXRAvailable(true);
+                    startWebXR(); // Use existing WebXR function
+                    console.log('✅ WebXR started');
+                  } else {
+                    console.log('⚠️ WebXR not supported on this device');
+                  }
+                } catch (xrErr) {
+                  console.log('⚠️ WebXR error:', xrErr);
+                }
+              } else {
+                console.log('⚠️ WebXR not available');
+              }
+
               console.log('✅ Environment detection started automatically');
             } catch (err) {
               console.error('❌ Auto-start failed:', err);
