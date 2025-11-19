@@ -15,6 +15,8 @@ export interface ObstacleZone {
   type: 'hand' | 'person' | 'object';
   label?: string; // Specific object label (e.g., "chair", "table", "bottle")
   confidence?: number;
+  isSmiling?: boolean; // For face detection - true when person is smiling
+  isInteracting?: boolean; // True when fish should animate (react to obstacle)
 }
 
 export interface DepthFrame {
@@ -632,7 +634,8 @@ export class TensorFlowDepthSensor {
           height: Math.min(1, maxY - minY + padding * 2),
           depth: depth || 2.5, // Default depth if 3D not available
           type: 'hand' as const,
-          confidence: hand.score || 0.9
+          confidence: hand.score || 0.9,
+          isInteracting: true // Hand always triggers fish interaction/animation
         });
       });
 
@@ -677,7 +680,22 @@ export class TensorFlowDepthSensor {
         // Clamp to reasonable range
         estimatedDepth = Math.max(0.2, Math.min(5.0, estimatedDepth));
 
-        console.log(`    Face: ${estimatedDepth.toFixed(2)}m (width: ${faceWidthPixels.toFixed(0)}px)`);
+        // Detect smile using facial keypoints
+        let isSmiling = false;
+        if (face.keypoints && face.keypoints.length >= 6) {
+          // MediaPipe Face Detector keypoints: 0=right eye, 1=left eye, 2=nose, 3=mouth, 4=right ear, 5=left ear
+          // Check if mouth corners are elevated (smile detection)
+          const mouth = face.keypoints[3];
+          const nose = face.keypoints[2];
+
+          if (mouth && nose) {
+            // If mouth is higher than expected relative to nose, person is smiling
+            const mouthToNoseRatio = (nose.y - mouth.y) / box.height;
+            isSmiling = mouthToNoseRatio > 0.15; // Threshold for smile detection
+          }
+        }
+
+        console.log(`    Face: ${estimatedDepth.toFixed(2)}m ${isSmiling ? '😊 SMILING!' : ''}`);
 
         const padding = 0.05;
         obstacles.push({
@@ -688,7 +706,9 @@ export class TensorFlowDepthSensor {
           height: Math.min(1, height + padding * 2),
           depth: estimatedDepth,
           type: 'person' as const,
-          confidence: face.box.score || 0.9
+          confidence: face.box.score || 0.9,
+          isSmiling: isSmiling,
+          isInteracting: true // Face always triggers fish interaction
         });
       });
 

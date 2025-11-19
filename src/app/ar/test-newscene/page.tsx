@@ -24,6 +24,7 @@ import { Professional3DScanInterface } from '@/components/ar/Professional3DScanI
 import { ScreenshotCaptureEffect } from '@/components/ar/ScreenshotCaptureEffect';
 import { EnvironmentDebugOverlay } from '@/components/ar/EnvironmentDebugOverlay';
 import { ObjectLabelsOverlay } from '@/components/ar/ObjectLabelsOverlay';
+import { ZoomControls } from '@/components/ar/ZoomControls';
 
 function TestNewSceneContent() {
   // CRITICAL FIX: Extract creature ID once with useMemo to prevent infinite re-renders
@@ -73,6 +74,10 @@ function TestNewSceneContent() {
     webxr: 0,
     pose: 0
   });
+
+  // Zoom control and smile detection
+  const [fishScale, setFishScale] = useState(1.0);
+  const [isUserSmiling, setIsUserSmiling] = useState(false);
 
   // WebXR surface detection with depth and dimensions
   const [detectedSurfaces, setDetectedSurfaces] = useState<number>(0);
@@ -238,6 +243,21 @@ function TestNewSceneContent() {
       setPreferredLanguage(language);
     }
   }, [language, preferredLanguage, setPreferredLanguage]);
+
+  // Detect smile from obstacle zones
+  useEffect(() => {
+    const faceZone = obstacleZones.find(zone => zone.type === 'person');
+    setIsUserSmiling(faceZone?.isSmiling || false);
+  }, [obstacleZones]);
+
+  // Zoom handlers
+  const handleZoomIn = useCallback(() => {
+    setFishScale(prev => Math.min(prev + 0.2, 3.0));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setFishScale(prev => Math.max(prev - 0.2, 0.5));
+  }, []);
 
   // Initialize AR from store (once)
   useEffect(() => {

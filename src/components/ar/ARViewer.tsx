@@ -38,6 +38,8 @@ interface ARViewerProps {
   }>;
   triggerHideBehind?: number;
   triggerExplore?: number;
+  fishScale?: number; // Manual zoom control
+  isUserSmiling?: boolean; // Smile detection state
 }
 
 // Static camera settings (never change)
